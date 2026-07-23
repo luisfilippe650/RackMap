@@ -1,0 +1,100 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Map {
+  id           Int      @id @default(autoincrement())
+  name         String
+  description  String?
+  columnsCount Int      @map("columns_count")
+  rowsCount    Int      @map("rows_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  locations MapLocation[]
+  positions MapPosition[]
+  cells     MapCell[]
+
+  @@map("rackmap_maps")
+}
+
+model MapLocation {
+  id        Int      @id @default(autoincrement())
+  mapId     Int      @map("map_id")
+  code      String   @db.VarChar(30)
+  label     String?  @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  map       Map           @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  positions MapPosition[]
+
+  @@unique([mapId, code])
+  @@index([mapId])
+  @@map("rackmap_locations")
+}
+
+model MapPosition {
+  id           Int      @id @default(autoincrement())
+  mapId        Int      @map("map_id")
+  locationId   Int      @map("location_id")
+  rackNumber   String   @map("rack_number") @db.VarChar(30)
+  positionX    Int      @map("position_x")
+  positionY    Int      @map("position_y")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  map      Map         @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  location MapLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  cell     MapCell?
+
+  @@unique([mapId, locationId, rackNumber])
+  @@unique([mapId, positionX, positionY])
+  @@index([mapId])
+  @@map("rackmap_positions")
+}
+
+model MapCell {
+  id               Int        @id @default(autoincrement())
+  mapId            Int        @map("map_id")
+  mapPositionId    Int?       @unique @map("map_position_id")
+  positionX        Int        @map("position_x")
+  positionY        Int        @map("position_y")
+  cellType         CellType   @map("cell_type")
+  source           CellSource
+  racktablesRackId Int?       @map("racktables_rack_id")
+  label            String?    @db.VarChar(100)
+  rotation         Int        @default(0)
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  map         Map          @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  mapPosition MapPosition? @relation(fields: [mapPositionId], references: [id], onDelete: Cascade)
+
+  @@unique([mapId, positionX, positionY])
+  @@unique([mapId, racktablesRackId])
+  @@index([mapId])
+  @@map("rackmap_cells")
+}
+
+enum CellType {
+  RACK
+  WALL
+  DOOR
+  PDU
+}
+
+enum CellSource {
+  AUTOMATIC
+  MANUAL
+}

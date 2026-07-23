@@ -1,0 +1,16 @@
+node_modules/
+
+.env
+.env.local
+.env.*.local
+!.env.example
+
+dist/
+build/
+
+backend/src/generated/prisma/
+backend/.agents/
+backend/.claude/
+backend/.codex/
+backend/.windsurf/
+backend/skills-lock.json
