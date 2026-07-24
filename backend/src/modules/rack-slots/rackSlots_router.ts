@@ -1,11 +1,14 @@
 import { FastifyInstance } from "fastify";
 import {
     createRackSlotController,
+    deleteRackSlotByIdController,
+    findRackSlotByIdController,
     findRackSlotByPositionController,
     listRackSlotsController,
     setRackSlotActiveController,
     setRackSlotCoordinatesController,
     setRackSlotSizeController,
+    updateRackSlotByIdController,
     updateRackSlotController,
 } from "./rackSlots_controller";
 
@@ -21,4 +24,8 @@ export async function RackSlotsRoutes(app: FastifyInstance) {
         routes.patch("/:slotId/size", setRackSlotSizeController);
         routes.patch("/:slotId/active", setRackSlotActiveController);
     }, { prefix });
+
+    app.get("/rack-slots/:rackSlotId", findRackSlotByIdController);
+    app.patch("/rack-slots/:rackSlotId", updateRackSlotByIdController);
+    app.delete("/rack-slots/:rackSlotId", deleteRackSlotByIdController);
 }

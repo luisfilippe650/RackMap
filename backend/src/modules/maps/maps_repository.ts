@@ -3,6 +3,7 @@ import { Prisma } from "../../generated/prisma/client";
 import {
     AssociateRackTablesLocationsDTO,
     ConfigureNormalizationRulesDTO,
+    CreateSourceLocationDTO,
     CreateMapDTO,
     ListMapsDTO,
     SetMapDimensionsDTO,
@@ -67,6 +68,66 @@ export function findMapById(id: number) {
     return prisma.datacenterMap.findUnique({
         where: { id },
         include: mapDetailInclude,
+    });
+}
+
+export function findMapForRendering(id: number) {
+    return prisma.datacenterMap.findUnique({
+        where: { id },
+        include: {
+            sourceLocations: {
+                where: { active: true },
+                orderBy: { externalLocationName: 'asc' },
+            },
+            columns: {
+                where: { visible: true },
+                orderBy: { sortOrder: 'asc' },
+            },
+            rows: {
+                where: { visible: true },
+                orderBy: { sortOrder: 'asc' },
+            },
+            matchingRule: true,
+        },
+    });
+}
+
+export function listSourceLocations(mapId: number) {
+    return prisma.mapSourceLocation.findMany({
+        where: { mapId },
+        orderBy: { externalLocationName: 'asc' },
+    });
+}
+
+export function createSourceLocation(mapId: number, location: CreateSourceLocationDTO) {
+    return prisma.mapSourceLocation.upsert({
+        where: {
+            mapId_externalLocationId: {
+                mapId,
+                externalLocationId: location.externalLocationId,
+            },
+        },
+        create: {
+            mapId,
+            externalLocationId: location.externalLocationId,
+            externalLocationName: location.externalLocationName,
+            normalizedLocationName: location.normalizedLocationName ?? location.externalLocationName,
+            active: location.active ?? true,
+        },
+        update: {
+            externalLocationName: location.externalLocationName,
+            normalizedLocationName: location.normalizedLocationName ?? location.externalLocationName,
+            active: location.active ?? true,
+        },
+    });
+}
+
+export function deleteSourceLocation(mapId: number, sourceLocationId: number) {
+    return prisma.mapSourceLocation.delete({
+        where: {
+            id: sourceLocationId,
+            mapId,
+        },
     });
 }
 

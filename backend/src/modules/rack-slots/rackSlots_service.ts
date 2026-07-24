@@ -7,7 +7,9 @@ import {
 } from "./rackSlots_dto";
 import {
     createRackSlot,
+    deleteRackSlotById,
     findRackSlotById,
+    findRackSlotByGlobalId,
     findRackSlotByPosition,
     findRackSlotConflict,
     listRackSlots,
@@ -16,6 +18,7 @@ import {
     setRackSlotCoordinates,
     setRackSlotSize,
     updateRackSlot,
+    updateRackSlotById,
 } from "./rackSlots_repository";
 
 export class RackSlotNotFoundError extends Error {}
@@ -55,6 +58,16 @@ export async function findRackSlotByPositionService(
     return findRackSlotByPosition(mapId, rowCode, rackCode);
 }
 
+export async function findRackSlotByIdService(rackSlotId: number) {
+    const rackSlot = await findRackSlotByGlobalId(rackSlotId);
+
+    if (!rackSlot) {
+        throw new RackSlotNotFoundError('Rack slot not found');
+    }
+
+    return rackSlot;
+}
+
 export async function createRackSlotService(mapId: number, input: CreateRackSlotDTO) {
     await ensureMapExists(mapId);
 
@@ -82,6 +95,30 @@ export async function updateRackSlotService(
     }
 
     return updateRackSlot(mapId, slotId, input);
+}
+
+export async function updateRackSlotByIdService(rackSlotId: number, input: UpdateRackSlotDTO) {
+    const currentRackSlot = await findRackSlotByIdService(rackSlotId);
+    const nextRowCode = input.rowCode ?? currentRackSlot.normalizedRowCode;
+    const nextRackCode = input.rackCode ?? currentRackSlot.rackCode;
+    const conflict = await findRackSlotConflict(
+        currentRackSlot.mapId,
+        nextRowCode,
+        nextRackCode,
+        rackSlotId,
+    );
+
+    if (conflict) {
+        throw new RackSlotConflictError('Rack slot already exists for this rowCode and rackCode');
+    }
+
+    return updateRackSlotById(rackSlotId, input);
+}
+
+export async function deleteRackSlotByIdService(rackSlotId: number) {
+    await findRackSlotByIdService(rackSlotId);
+
+    return deleteRackSlotById(rackSlotId);
 }
 
 export async function setRackSlotCoordinatesService(

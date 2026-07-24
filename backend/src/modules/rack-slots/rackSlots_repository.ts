@@ -8,7 +8,7 @@ import {
 } from "./rackSlots_dto";
 
 function toCreateRackSlotData(input: CreateRackSlotDTO) {
-    const { rowCode, ...data } = input;
+    const { rowCode, normalizedRowCode, ...data } = input;
 
     return {
         ...data,
@@ -17,7 +17,7 @@ function toCreateRackSlotData(input: CreateRackSlotDTO) {
 }
 
 function toUpdateRackSlotData(input: UpdateRackSlotDTO) {
-    const { rowCode, ...data } = input;
+    const { rowCode, normalizedRowCode, ...data } = input;
 
     return {
         ...data,
@@ -42,12 +42,31 @@ export function listRackSlots(mapId: number) {
     });
 }
 
+export function listActiveRackSlots(mapId: number) {
+    return prisma.rackSlot.findMany({
+        where: {
+            mapId,
+            active: true,
+        },
+        orderBy: [
+            { normalizedRowCode: 'asc' },
+            { rackCode: 'asc' },
+        ],
+    });
+}
+
 export function findRackSlotById(mapId: number, slotId: number) {
     return prisma.rackSlot.findFirst({
         where: {
             id: slotId,
             mapId,
         },
+    });
+}
+
+export function findRackSlotByGlobalId(rackSlotId: number) {
+    return prisma.rackSlot.findUnique({
+        where: { id: rackSlotId },
     });
 }
 
@@ -95,6 +114,19 @@ export function updateRackSlot(mapId: number, slotId: number, input: UpdateRackS
             mapId,
         },
         data: toUpdateRackSlotData(input),
+    });
+}
+
+export function updateRackSlotById(rackSlotId: number, input: UpdateRackSlotDTO) {
+    return prisma.rackSlot.update({
+        where: { id: rackSlotId },
+        data: toUpdateRackSlotData(input),
+    });
+}
+
+export function deleteRackSlotById(rackSlotId: number) {
+    return prisma.rackSlot.delete({
+        where: { id: rackSlotId },
     });
 }
 

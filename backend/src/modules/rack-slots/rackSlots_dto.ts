@@ -12,14 +12,21 @@ export const RackSlotParamsSchema = RackSlotMapParamsSchema.extend({
     slotId: z.coerce.number().int().positive(),
 });
 
+export const RackSlotIdParamsSchema = z.object({
+    rackSlotId: z.coerce.number().int().positive(),
+});
+
 export const FindRackSlotByPositionSchema = RackSlotMapParamsSchema.extend({
     rowCode: CodeSchema,
     rackCode: CodeSchema,
 });
 
-export const CreateRackSlotSchema = z.object({
-    rowCode: CodeSchema,
+const RackSlotInputSchema = z.object({
+    rowCode: CodeSchema.optional(),
+    normalizedRowCode: CodeSchema.optional(),
     rackCode: CodeSchema,
+    externalRowId: z.number().int().positive().optional().nullable(),
+    externalRowName: z.string().trim().min(1).max(100).optional().nullable(),
     positionX: CoordinateSchema,
     positionY: CoordinateSchema,
     width: DimensionSchema.optional(),
@@ -32,10 +39,21 @@ export const CreateRackSlotSchema = z.object({
     active: z.boolean().optional(),
 });
 
-export const UpdateRackSlotSchema = CreateRackSlotSchema.partial().refine(
+export const CreateRackSlotSchema = RackSlotInputSchema.refine(
+    (data) => data.rowCode || data.normalizedRowCode,
+    { message: 'rowCode or normalizedRowCode must be provided' },
+).transform((data) => ({
+    ...data,
+    rowCode: data.rowCode ?? data.normalizedRowCode!,
+}));
+
+export const UpdateRackSlotSchema = RackSlotInputSchema.partial().refine(
     (data) => Object.keys(data).length > 0,
     { message: 'At least one field must be provided' },
-);
+).transform((data) => ({
+    ...data,
+    rowCode: data.rowCode ?? data.normalizedRowCode,
+}));
 
 export const SetRackSlotCoordinatesSchema = z.object({
     positionX: CoordinateSchema,

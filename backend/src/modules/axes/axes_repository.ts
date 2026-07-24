@@ -3,8 +3,11 @@ import {
     CreateColumnsDTO,
     CreateRowsDTO,
     ReorderAxisDTO,
+    SetAxesDTO,
     SetColumnWidthDTO,
     SetRowHeightDTO,
+    UpdateColumnDTO,
+    UpdateRowDTO,
 } from "./axes_dto";
 
 const SORT_ORDER_OFFSET = 100000;
@@ -21,6 +24,20 @@ export function getAxes(mapId: number) {
                 orderBy: { sortOrder: 'asc' },
             },
         },
+    });
+}
+
+export function listColumns(mapId: number) {
+    return prisma.mapColumn.findMany({
+        where: { mapId },
+        orderBy: { sortOrder: 'asc' },
+    });
+}
+
+export function listRows(mapId: number) {
+    return prisma.mapRow.findMany({
+        where: { mapId },
+        orderBy: { sortOrder: 'asc' },
     });
 }
 
@@ -185,5 +202,110 @@ export function setRowHeight(mapId: number, rowId: number, input: SetRowHeightDT
             mapId,
         },
         data: { height: input.height },
+    });
+}
+
+export function updateColumn(columnId: number, input: UpdateColumnDTO) {
+    return prisma.mapColumn.update({
+        where: { id: columnId },
+        data: input,
+    });
+}
+
+export function updateRow(rowId: number, input: UpdateRowDTO) {
+    return prisma.mapRow.update({
+        where: { id: rowId },
+        data: input,
+    });
+}
+
+export function deleteColumn(columnId: number) {
+    return prisma.mapColumn.delete({
+        where: { id: columnId },
+    });
+}
+
+export function deleteRow(rowId: number) {
+    return prisma.mapRow.delete({
+        where: { id: rowId },
+    });
+}
+
+export function setAxes(mapId: number, input: SetAxesDTO) {
+    return prisma.$transaction(async (tx) => {
+        await tx.datacenterMap.findUniqueOrThrow({ where: { id: mapId } });
+
+        if (input.columns.length > 0) {
+            await tx.mapColumn.updateMany({
+                where: { mapId },
+                data: { sortOrder: { increment: SORT_ORDER_OFFSET } },
+            });
+        }
+
+        for (const column of input.columns) {
+            await tx.mapColumn.upsert({
+                where: {
+                    mapId_code: {
+                        mapId,
+                        code: column.code,
+                    },
+                },
+                create: {
+                    mapId,
+                    code: column.code,
+                    label: column.label,
+                    sortOrder: column.sortOrder,
+                    width: column.width,
+                    visible: column.visible,
+                },
+                update: {
+                    label: column.label,
+                    sortOrder: column.sortOrder,
+                    width: column.width,
+                    visible: column.visible,
+                },
+            });
+        }
+
+        if (input.rows.length > 0) {
+            await tx.mapRow.updateMany({
+                where: { mapId },
+                data: { sortOrder: { increment: SORT_ORDER_OFFSET } },
+            });
+        }
+
+        for (const row of input.rows) {
+            await tx.mapRow.upsert({
+                where: {
+                    mapId_code: {
+                        mapId,
+                        code: row.code,
+                    },
+                },
+                create: {
+                    mapId,
+                    code: row.code,
+                    label: row.label,
+                    sortOrder: row.sortOrder,
+                    height: row.height,
+                    visible: row.visible,
+                },
+                update: {
+                    label: row.label,
+                    sortOrder: row.sortOrder,
+                    height: row.height,
+                    visible: row.visible,
+                },
+            });
+        }
+
+        return tx.datacenterMap.findUniqueOrThrow({
+            where: { id: mapId },
+            select: {
+                id: true,
+                columns: { orderBy: { sortOrder: 'asc' } },
+                rows: { orderBy: { sortOrder: 'asc' } },
+            },
+        });
     });
 }

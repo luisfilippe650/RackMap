@@ -2,6 +2,7 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import {
     CreateRackSlotSchema,
     FindRackSlotByPositionSchema,
+    RackSlotIdParamsSchema,
     RackSlotMapParamsSchema,
     RackSlotParamsSchema,
     SetRackSlotActiveSchema,
@@ -11,6 +12,8 @@ import {
 } from "./rackSlots_dto";
 import {
     createRackSlotService,
+    deleteRackSlotByIdService,
+    findRackSlotByIdService,
     findRackSlotByPositionService,
     listRackSlotsService,
     RackSlotConflictError,
@@ -18,6 +21,7 @@ import {
     setRackSlotActiveService,
     setRackSlotCoordinatesService,
     setRackSlotSizeService,
+    updateRackSlotByIdService,
     updateRackSlotService,
 } from "./rackSlots_service";
 
@@ -62,6 +66,17 @@ export async function findRackSlotByPositionController(
     }
 }
 
+export async function findRackSlotByIdController(request: FastifyRequest, reply: FastifyReply) {
+    try {
+        const { rackSlotId } = RackSlotIdParamsSchema.parse(request.params);
+        const rackSlot = await findRackSlotByIdService(rackSlotId);
+
+        return reply.status(200).send(rackSlot);
+    } catch (error) {
+        return handleRackSlotError(error, reply);
+    }
+}
+
 export async function createRackSlotController(request: FastifyRequest, reply: FastifyReply) {
     try {
         const { mapId } = RackSlotMapParamsSchema.parse(request.params);
@@ -81,6 +96,30 @@ export async function updateRackSlotController(request: FastifyRequest, reply: F
         const rackSlot = await updateRackSlotService(mapId, slotId, body);
 
         return reply.status(200).send(rackSlot);
+    } catch (error) {
+        return handleRackSlotError(error, reply);
+    }
+}
+
+export async function updateRackSlotByIdController(request: FastifyRequest, reply: FastifyReply) {
+    try {
+        const { rackSlotId } = RackSlotIdParamsSchema.parse(request.params);
+        const body = UpdateRackSlotSchema.parse(request.body);
+        const rackSlot = await updateRackSlotByIdService(rackSlotId, body);
+
+        return reply.status(200).send(rackSlot);
+    } catch (error) {
+        return handleRackSlotError(error, reply);
+    }
+}
+
+export async function deleteRackSlotByIdController(request: FastifyRequest, reply: FastifyReply) {
+    try {
+        const { rackSlotId } = RackSlotIdParamsSchema.parse(request.params);
+
+        await deleteRackSlotByIdService(rackSlotId);
+
+        return reply.status(204).send();
     } catch (error) {
         return handleRackSlotError(error, reply);
     }

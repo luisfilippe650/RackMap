@@ -2,18 +2,23 @@ import { FastifyReply, FastifyRequest } from "fastify";
 import {
     AssociateRackTablesLocationsSchema,
     ConfigureNormalizationRulesSchema,
+    CreateSourceLocationSchema,
     CreateMapSchema,
     ListMapsSchema,
     MapIdSchema,
     SetMapDimensionsSchema,
+    SourceLocationParamsSchema,
     UpdateMapSchema,
 } from './maps_dto';
 import {
     associateRackTablesLocationsService,
     configureNormalizationRulesService,
+    createSourceLocationService,
     createMapService,
     deleteMapService,
+    deleteSourceLocationService,
     findMapByIdService,
+    listSourceLocationsService,
     listMapsService,
     setMapDimensionsService,
     updateMapService,
@@ -48,6 +53,29 @@ export async function findMapByIdController(request: FastifyRequest, reply: Fast
     }
 
     return reply.status(200).send(map);
+}
+
+export async function listSourceLocationsController(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = MapIdSchema.parse(request.params);
+    const locations = await listSourceLocationsService(id);
+
+    return reply.status(200).send(locations);
+}
+
+export async function createSourceLocationController(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = MapIdSchema.parse(request.params);
+    const body = CreateSourceLocationSchema.parse(request.body);
+    const location = await createSourceLocationService(id, body);
+
+    return reply.status(201).send(location);
+}
+
+export async function deleteSourceLocationController(request: FastifyRequest, reply: FastifyReply) {
+    const { mapId, sourceLocationId } = SourceLocationParamsSchema.parse(request.params);
+
+    await deleteSourceLocationService(mapId, sourceLocationId);
+
+    return reply.status(204).send();
 }
 
 

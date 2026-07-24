@@ -4,8 +4,16 @@ import { RackNumberStrategy } from '../../generated/prisma/enums';
 const ColorSchema = z.string().min(1).max(20);
 const DimensionSchema = z.number().positive();
 
-export const MapIdSchema = z.object({
-    id: z.coerce.number().int().positive(),
+export const MapIdSchema = z.union([
+    z.object({ mapId: z.coerce.number().int().positive() }),
+    z.object({ id: z.coerce.number().int().positive() }),
+]).transform((params) => ({
+    id: 'mapId' in params ? params.mapId : params.id,
+}));
+
+export const SourceLocationParamsSchema = z.object({
+    mapId: z.coerce.number().int().positive(),
+    sourceLocationId: z.coerce.number().int().positive(),
 });
 
 
@@ -45,6 +53,8 @@ export const RackTablesLocationSchema = z.object({
     active: z.boolean().optional(),
 });
 
+export const CreateSourceLocationSchema = RackTablesLocationSchema;
+
 
 export const AssociateRackTablesLocationsSchema = z.object({
     locations: z.array(RackTablesLocationSchema).min(1),
@@ -67,6 +77,7 @@ export type UpdateMapDTO = z.infer<typeof UpdateMapSchema>;
 export type ListMapsDTO = z.infer<typeof ListMapsSchema>;
 export type SetMapDimensionsDTO = z.infer<typeof SetMapDimensionsSchema>;
 export type RackTablesLocationDTO = z.infer<typeof RackTablesLocationSchema>;
+export type CreateSourceLocationDTO = z.infer<typeof CreateSourceLocationSchema>;
 export type AssociateRackTablesLocationsDTO = z.infer<typeof AssociateRackTablesLocationsSchema>;
 export type ConfigureNormalizationRulesDTO = z.infer<typeof ConfigureNormalizationRulesSchema>;
 export type MapDTO = CreateMapDTO;

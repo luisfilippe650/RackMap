@@ -8,7 +8,7 @@ USE rackmap;
 -- MAPAS
 -- =========================================================
 
-CREATE TABLE datacenter_maps (
+CREATE TABLE IF NOT EXISTS datacenter_maps (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     name VARCHAR(150) NOT NULL,
     description TEXT NULL,
@@ -31,7 +31,7 @@ CREATE TABLE datacenter_maps (
 -- LOCATIONS DO RACKTABLES ASSOCIADAS AO MAPA
 -- =========================================================
 
-CREATE TABLE map_source_locations (
+CREATE TABLE IF NOT EXISTS map_source_locations (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     map_id INT UNSIGNED NOT NULL,
 
@@ -67,7 +67,7 @@ CREATE TABLE map_source_locations (
 -- COLUNAS VISUAIS
 -- =========================================================
 
-CREATE TABLE map_columns (
+CREATE TABLE IF NOT EXISTS map_columns (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     map_id INT UNSIGNED NOT NULL,
 
@@ -105,7 +105,7 @@ CREATE TABLE map_columns (
 -- LINHAS VISUAIS
 -- =========================================================
 
-CREATE TABLE map_rows (
+CREATE TABLE IF NOT EXISTS map_rows (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     map_id INT UNSIGNED NOT NULL,
 
@@ -143,7 +143,7 @@ CREATE TABLE map_rows (
 -- POSIÇÕES DINÂMICAS PARA RACKS
 -- =========================================================
 
-CREATE TABLE rack_slots (
+CREATE TABLE IF NOT EXISTS rack_slots (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     map_id INT UNSIGNED NOT NULL,
 
@@ -218,7 +218,7 @@ CREATE TABLE rack_slots (
 -- ELEMENTOS FIXOS
 -- =========================================================
 
-CREATE TABLE map_elements (
+CREATE TABLE IF NOT EXISTS map_elements (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     map_id INT UNSIGNED NOT NULL,
 
@@ -281,7 +281,7 @@ CREATE TABLE map_elements (
 -- CONFIGURAÇÃO DE NORMALIZAÇÃO
 -- =========================================================
 
-CREATE TABLE map_matching_rules (
+CREATE TABLE IF NOT EXISTS map_matching_rules (
     id INT UNSIGNED NOT NULL AUTO_INCREMENT,
     map_id INT UNSIGNED NOT NULL,
 

@@ -1,6 +1,7 @@
 import {
     AssociateRackTablesLocationsDTO,
     ConfigureNormalizationRulesDTO,
+    CreateSourceLocationDTO,
     CreateMapDTO,
     ListMapsDTO,
     SetMapDimensionsDTO,
@@ -9,9 +10,12 @@ import {
 import {
     associateRackTablesLocations,
     configureNormalizationRules,
+    createSourceLocation,
     createMap,
     deleteMap,
+    deleteSourceLocation,
     findMapById,
+    listSourceLocations,
     listMaps,
     setMapDimensions,
     updateMap,
@@ -27,6 +31,18 @@ export async function listMapsService(filters: ListMapsDTO) {
 
 export async function findMapByIdService(id: number) {
     return findMapById(id);
+}
+
+export async function listSourceLocationsService(mapId: number) {
+    return listSourceLocations(mapId);
+}
+
+export async function createSourceLocationService(mapId: number, location: CreateSourceLocationDTO) {
+    return createSourceLocation(mapId, location);
+}
+
+export async function deleteSourceLocationService(mapId: number, sourceLocationId: number) {
+    return deleteSourceLocation(mapId, sourceLocationId);
 }
 
 export async function updateMapService(id: number, map: UpdateMapDTO) {
