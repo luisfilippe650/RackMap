@@ -59,7 +59,7 @@ services:
 
   mysql-db:
     image: mariadb:11.4
-    container_name: mysql-db
+    container_name: rackmap-db
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: root
