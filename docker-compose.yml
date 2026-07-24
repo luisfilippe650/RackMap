@@ -1,7 +1,6 @@
 services:
   frontend:
     image: node:22
-    container_name: rackmap-frontend
     working_dir: /app
     restart: unless-stopped
     depends_on:
@@ -26,7 +25,6 @@ services:
 
   backend:
     image: node:22
-    container_name: rackmap-backend
     working_dir: /app
     restart: unless-stopped
     depends_on:
@@ -59,7 +57,6 @@ services:
 
   mysql-db:
     image: mariadb:11.4
-    container_name: rackmap-db
     restart: unless-stopped
     environment:
       MARIADB_ROOT_PASSWORD: root
@@ -67,8 +64,6 @@ services:
       MARIADB_USER: rackmap
       MARIADB_PASSWORD: rackmap
       TZ: America/Sao_Paulo
-    ports:
-      - "3306:3306"
     volumes:
       - rackmap-mariadb-data:/var/lib/mysql
       - ./database/database.sql:/docker-entrypoint-initdb.d/01-rackmap.sql:ro
