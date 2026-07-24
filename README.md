@@ -159,19 +159,3 @@ docker compose logs -f mysql-db
 # Build do frontend para produção
 npm run build:frontend
 ```
-
-## Próximas Etapas
-
-- [ ] Revisar e otimizar performance do frontend (tabelas virtualizadas, memoização)
-- [ ] Validar lógica de negócio do backend com o time
-- [ ] Implementar testes unitários e integração
-- [ ] Melhorar tratamento de erros e validações
-- [ ] Documentar fluxos de dados e APIs
-
-## Contribuindo
-
-Melhorias são bem-vindas! Estamos refinando este projeto para torná-lo uma solução robusta para o time.
-
-## Licença
-
-[Adicionar informação de licença se aplicável]
