@@ -1,4 +1,5 @@
 import { prisma } from "../../core/prisma";
+import type { MapElement } from "../../generated/prisma/client";
 import {
     CreateElementDTO,
     GroupWallElementsDTO,
@@ -47,7 +48,7 @@ export function findElementByGlobalId(elementId: number) {
     });
 }
 
-export function findElementsByIds(mapId: number, elementIds: number[]) {
+export function findElementsByIds(mapId: number, elementIds: number[]): Promise<MapElement[]> {
     return prisma.mapElement.findMany({
         where: {
             mapId,
