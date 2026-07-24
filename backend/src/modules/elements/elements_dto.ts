@@ -36,7 +36,7 @@ export const ListElementsSchema = z.object({
     visible: QueryBooleanSchema.optional(),
 });
 
-export const CreateElementSchema = z.object({
+const ElementInputSchema = z.object({
     type: z.enum(MapElementType),
     label: LabelSchema.optional().nullable(),
     customType: z.string().trim().min(1).max(100).optional().nullable(),
@@ -51,14 +51,19 @@ export const CreateElementSchema = z.object({
     borderColor: ColorSchema.optional().nullable(),
     textColor: ColorSchema.optional().nullable(),
     visible: z.boolean().optional(),
-}).refine(
+});
+
+export const CreateElementSchema = ElementInputSchema.refine(
     (data) => data.type === 'CUSTOM' || !data.customType,
     { message: 'customType is only allowed when type is CUSTOM', path: ['customType'] },
 );
 
-export const UpdateElementSchema = CreateElementSchema.partial().refine(
+export const UpdateElementSchema = ElementInputSchema.partial().refine(
     (data) => Object.keys(data).length > 0,
     { message: 'At least one field must be provided' },
+).refine(
+    (data) => data.type === 'CUSTOM' || !data.customType,
+    { message: 'customType is only allowed when type is CUSTOM', path: ['customType'] },
 );
 
 export const SetElementPositionSchema = z.object({

@@ -6,6 +6,7 @@ import {
     createMapController,
     deleteMapController,
     deleteSourceLocationController,
+    duplicateMapController,
     findMapByIdController,
     listSourceLocationsController,
     listMapsController,
@@ -20,6 +21,7 @@ export async function MapRoutes(app: FastifyInstance) {
         routes.post("/", createMapController);
         routes.get("/", listMapsController);
         routes.get("/:mapId", findMapByIdController);
+        routes.post("/:mapId/duplicate", duplicateMapController);
         routes.patch("/:mapId", updateMapController);
         routes.put("/:mapId", updateMapController);
         routes.delete("/:mapId", deleteMapController);

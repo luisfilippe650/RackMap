@@ -17,6 +17,7 @@ import {
     createMapService,
     deleteMapService,
     deleteSourceLocationService,
+    duplicateMapService,
     findMapByIdService,
     listSourceLocationsService,
     listMapsService,
@@ -93,9 +94,25 @@ export async function updateMapController(request: FastifyRequest, reply: Fastif
 export async function deleteMapController(request: FastifyRequest, reply: FastifyReply) {
     const { id } = MapIdSchema.parse(request.params);
 
-    await deleteMapService(id);
+    const deletedMap = await deleteMapService(id);
+
+    if (!deletedMap) {
+        return reply.status(404).send({ message: 'Map not found' });
+    }
 
     return reply.status(204).send();
+}
+
+export async function duplicateMapController(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = MapIdSchema.parse(request.params);
+
+    const duplicatedMap = await duplicateMapService(id);
+
+    if (!duplicatedMap) {
+        return reply.status(404).send({ message: 'Map not found' });
+    }
+
+    return reply.status(201).send(duplicatedMap);
 }
 
 

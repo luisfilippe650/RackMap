@@ -71,7 +71,9 @@ export async function findRackSlotByIdService(rackSlotId: number) {
 export async function createRackSlotService(mapId: number, input: CreateRackSlotDTO) {
     await ensureMapExists(mapId);
 
-    const conflict = await findRackSlotConflict(mapId, input.rowCode, input.rackCode);
+    const conflict = input.rowCode && input.rackCode
+        ? await findRackSlotConflict(mapId, input.rowCode, input.rackCode)
+        : null;
 
     if (conflict) {
         throw new RackSlotConflictError('Rack slot already exists for this rowCode and rackCode');
@@ -88,7 +90,9 @@ export async function updateRackSlotService(
     const currentRackSlot = await ensureRackSlotExists(mapId, slotId);
     const nextRowCode = input.rowCode ?? currentRackSlot.normalizedRowCode;
     const nextRackCode = input.rackCode ?? currentRackSlot.rackCode;
-    const conflict = await findRackSlotConflict(mapId, nextRowCode, nextRackCode, slotId);
+    const conflict = nextRowCode && nextRackCode
+        ? await findRackSlotConflict(mapId, nextRowCode, nextRackCode, slotId)
+        : null;
 
     if (conflict) {
         throw new RackSlotConflictError('Rack slot already exists for this rowCode and rackCode');
@@ -101,12 +105,14 @@ export async function updateRackSlotByIdService(rackSlotId: number, input: Updat
     const currentRackSlot = await findRackSlotByIdService(rackSlotId);
     const nextRowCode = input.rowCode ?? currentRackSlot.normalizedRowCode;
     const nextRackCode = input.rackCode ?? currentRackSlot.rackCode;
-    const conflict = await findRackSlotConflict(
-        currentRackSlot.mapId,
-        nextRowCode,
-        nextRackCode,
-        rackSlotId,
-    );
+    const conflict = nextRowCode && nextRackCode
+        ? await findRackSlotConflict(
+            currentRackSlot.mapId,
+            nextRowCode,
+            nextRackCode,
+            rackSlotId,
+        )
+        : null;
 
     if (conflict) {
         throw new RackSlotConflictError('Rack slot already exists for this rowCode and rackCode');

@@ -14,6 +14,7 @@ import {
     createMap,
     deleteMap,
     deleteSourceLocation,
+    duplicateMap,
     findMapById,
     listSourceLocations,
     listMaps,
@@ -51,6 +52,10 @@ export async function updateMapService(id: number, map: UpdateMapDTO) {
 
 export async function deleteMapService(id: number) {
     return deleteMap(id);
+}
+
+export async function duplicateMapService(id: number) {
+    return duplicateMap(id);
 }
 
 export async function setMapDimensionsService(id: number, dimensions: SetMapDimensionsDTO) {

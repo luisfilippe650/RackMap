@@ -36,6 +36,7 @@ export function listRackSlots(mapId: number) {
     return prisma.rackSlot.findMany({
         where: { mapId },
         orderBy: [
+            { rackName: 'asc' },
             { normalizedRowCode: 'asc' },
             { rackCode: 'asc' },
         ],
@@ -49,6 +50,8 @@ export function listActiveRackSlots(mapId: number) {
             active: true,
         },
         orderBy: [
+            { zIndex: 'asc' },
+            { id: 'asc' },
             { normalizedRowCode: 'asc' },
             { rackCode: 'asc' },
         ],
@@ -71,13 +74,11 @@ export function findRackSlotByGlobalId(rackSlotId: number) {
 }
 
 export function findRackSlotByPosition(mapId: number, rowCode: string, rackCode: string) {
-    return prisma.rackSlot.findUnique({
+    return prisma.rackSlot.findFirst({
         where: {
-            mapId_normalizedRowCode_rackCode: {
-                mapId,
-                normalizedRowCode: rowCode,
-                rackCode,
-            },
+            mapId,
+            normalizedRowCode: rowCode,
+            rackCode,
         },
     });
 }
@@ -88,6 +89,10 @@ export function findRackSlotConflict(
     rackCode: string,
     ignoredSlotId?: number,
 ) {
+    if (!rowCode || !rackCode) {
+        return null;
+    }
+
     return prisma.rackSlot.findFirst({
         where: {
             mapId,

@@ -3,6 +3,7 @@ import { z } from 'zod';
 const CodeSchema = z.string().trim().min(1).max(50);
 const DimensionSchema = z.number().positive();
 const CoordinateSchema = z.number();
+const ColorSchema = z.string().trim().min(1).max(20);
 
 export const RackSlotMapParamsSchema = z.object({
     mapId: z.coerce.number().int().positive(),
@@ -24,7 +25,11 @@ export const FindRackSlotByPositionSchema = RackSlotMapParamsSchema.extend({
 const RackSlotInputSchema = z.object({
     rowCode: CodeSchema.optional(),
     normalizedRowCode: CodeSchema.optional(),
-    rackCode: CodeSchema,
+    rackCode: CodeSchema.optional().nullable(),
+    rackName: z.string().trim().min(1).max(100).optional().nullable(),
+    rackTablesRackId: z.string().trim().min(1).max(100).optional().nullable(),
+    rackTablesRackName: z.string().trim().min(1).max(150).optional().nullable(),
+    rackTablesRackData: z.unknown().optional().nullable(),
     externalRowId: z.number().int().positive().optional().nullable(),
     externalRowName: z.string().trim().min(1).max(100).optional().nullable(),
     positionX: CoordinateSchema,
@@ -36,15 +41,15 @@ const RackSlotInputSchema = z.object({
     rotation: z.number().optional(),
     zIndex: z.number().int().optional(),
     label: z.string().trim().min(1).max(100).optional().nullable(),
+    fillColor: ColorSchema.optional().nullable(),
+    borderColor: ColorSchema.optional().nullable(),
+    textColor: ColorSchema.optional().nullable(),
     active: z.boolean().optional(),
 });
 
-export const CreateRackSlotSchema = RackSlotInputSchema.refine(
-    (data) => data.rowCode || data.normalizedRowCode,
-    { message: 'rowCode or normalizedRowCode must be provided' },
-).transform((data) => ({
+export const CreateRackSlotSchema = RackSlotInputSchema.transform((data) => ({
     ...data,
-    rowCode: data.rowCode ?? data.normalizedRowCode!,
+    rowCode: data.rowCode ?? data.normalizedRowCode,
 }));
 
 export const UpdateRackSlotSchema = RackSlotInputSchema.partial().refine(

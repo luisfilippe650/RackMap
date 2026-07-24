@@ -108,28 +108,35 @@ model MapRow {
 }
 
 model RackSlot {
-  id                Int      @id @default(autoincrement()) @db.UnsignedInt
-  mapId             Int      @map("map_id") @db.UnsignedInt
-  externalRowId     Int?     @map("external_row_id") @db.UnsignedInt
-  externalRowName   String?  @map("external_row_name") @db.VarChar(100)
-  normalizedRowCode String   @map("normalized_row_code") @db.VarChar(50)
-  rackCode          String   @map("rack_code") @db.VarChar(50)
-  mapColumnId       Int?     @map("map_column_id") @db.UnsignedInt
-  mapRowId          Int?     @map("map_row_id") @db.UnsignedInt
-  positionX         Decimal  @map("position_x") @db.Decimal(10, 2)
-  positionY         Decimal  @map("position_y") @db.Decimal(10, 2)
-  width             Decimal  @default(64) @db.Decimal(10, 2)
-  height            Decimal  @default(160) @db.Decimal(10, 2)
-  rotation          Decimal  @default(0) @db.Decimal(8, 2)
-  zIndex            Int      @default(10) @map("z_index")
-  label             String?  @db.VarChar(100)
-  active            Boolean  @default(true)
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id                 Int      @id @default(autoincrement()) @db.UnsignedInt
+  mapId              Int      @map("map_id") @db.UnsignedInt
+  externalRowId      Int?     @map("external_row_id") @db.UnsignedInt
+  externalRowName    String?  @map("external_row_name") @db.VarChar(100)
+  normalizedRowCode  String?  @map("normalized_row_code") @db.VarChar(50)
+  rackCode           String?  @map("rack_code") @db.VarChar(50)
+  rackName           String?  @map("rack_name") @db.VarChar(100)
+  rackTablesRackId   String?  @map("racktables_rack_id") @db.VarChar(100)
+  rackTablesRackName String?  @map("racktables_rack_name") @db.VarChar(150)
+  rackTablesRackData Json?    @map("racktables_rack_data")
+  mapColumnId        Int?     @map("map_column_id") @db.UnsignedInt
+  mapRowId           Int?     @map("map_row_id") @db.UnsignedInt
+  positionX          Decimal  @map("position_x") @db.Decimal(10, 2)
+  positionY          Decimal  @map("position_y") @db.Decimal(10, 2)
+  width              Decimal  @default(64) @db.Decimal(10, 2)
+  height             Decimal  @default(160) @db.Decimal(10, 2)
+  rotation           Decimal  @default(0) @db.Decimal(8, 2)
+  zIndex             Int      @default(10) @map("z_index")
+  label              String?  @db.VarChar(100)
+  fillColor          String?  @map("fill_color") @db.VarChar(20)
+  borderColor        String?  @map("border_color") @db.VarChar(20)
+  textColor          String?  @map("text_color") @db.VarChar(20)
+  active             Boolean  @default(true)
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
 
   map       DatacenterMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
-  mapColumn MapColumn?     @relation(fields: [mapColumnId], references: [id], onDelete: SetNull)
-  mapRow    MapRow?        @relation(fields: [mapRowId], references: [id], onDelete: SetNull)
+  mapColumn MapColumn?    @relation(fields: [mapColumnId], references: [id], onDelete: SetNull)
+  mapRow    MapRow?       @relation(fields: [mapRowId], references: [id], onDelete: SetNull)
 
   @@unique([mapId, normalizedRowCode, rackCode])
   @@index([externalRowId])
@@ -165,16 +172,16 @@ model MapElement {
 }
 
 model MapMatchingRule {
-  id                      Int                @id @default(autoincrement()) @db.UnsignedInt
-  mapId                   Int                @unique @map("map_id") @db.UnsignedInt
-  rackNumberStrategy      RackNumberStrategy @default(TRAILING_NUMBER) @map("rack_number_strategy")
-  rackNamePattern         String?            @map("rack_name_pattern") @db.VarChar(255)
-  uppercaseRow            Boolean            @default(true) @map("uppercase_row")
-  trimValues              Boolean            @default(true) @map("trim_values")
-  removeSpacesFromRow     Boolean            @default(false) @map("remove_spaces_from_row")
-  rackCodePadding         Int?               @map("rack_code_padding") @db.UnsignedInt
-  createdAt               DateTime           @default(now()) @map("created_at")
-  updatedAt               DateTime           @updatedAt @map("updated_at")
+  id                  Int                @id @default(autoincrement()) @db.UnsignedInt
+  mapId               Int                @unique @map("map_id") @db.UnsignedInt
+  rackNumberStrategy  RackNumberStrategy @default(TRAILING_NUMBER) @map("rack_number_strategy")
+  rackNamePattern     String?            @map("rack_name_pattern") @db.VarChar(255)
+  uppercaseRow        Boolean            @default(true) @map("uppercase_row")
+  trimValues          Boolean            @default(true) @map("trim_values")
+  removeSpacesFromRow Boolean            @default(false) @map("remove_spaces_from_row")
+  rackCodePadding     Int?               @map("rack_code_padding") @db.UnsignedInt
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
 
   map DatacenterMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
 
