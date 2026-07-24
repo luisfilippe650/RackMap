@@ -151,8 +151,12 @@ CREATE TABLE IF NOT EXISTS rack_slots (
     external_row_id INT UNSIGNED NULL,
     external_row_name VARCHAR(100) NULL,
 
-    normalized_row_code VARCHAR(50) NOT NULL,
-    rack_code VARCHAR(50) NOT NULL,
+    normalized_row_code VARCHAR(50) NULL,
+    rack_code VARCHAR(50) NULL,
+    rack_name VARCHAR(100) NULL,
+    racktables_rack_id VARCHAR(100) NULL,
+    racktables_rack_name VARCHAR(150) NULL,
+    racktables_rack_data JSON NULL,
 
     -- Referência opcional aos eixos visuais
     map_column_id INT UNSIGNED NULL,
@@ -169,6 +173,9 @@ CREATE TABLE IF NOT EXISTS rack_slots (
     z_index INT NOT NULL DEFAULT 10,
 
     label VARCHAR(100) NULL,
+    fill_color VARCHAR(20) NULL,
+    border_color VARCHAR(20) NULL,
+    text_color VARCHAR(20) NULL,
 
     active BOOLEAN NOT NULL DEFAULT TRUE,
 
