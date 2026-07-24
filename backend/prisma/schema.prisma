@@ -12,89 +12,171 @@ datasource db {
   provider = "mysql"
 }
 
-model Map {
-  id           Int      @id @default(autoincrement())
-  name         String
-  description  String?
-  columnsCount Int      @map("columns_count")
-  rowsCount    Int      @map("rows_count")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  locations MapLocation[]
-  positions MapPosition[]
-  cells     MapCell[]
-
-  @@map("rackmap_maps")
+enum MapElementType {
+  PDU
+  WALL
+  DOOR
+  CORRIDOR
+  COLUMN
+  UPS
+  AIR_CONDITIONER
+  ELECTRICAL_PANEL
+  EMPTY_AREA
+  CUSTOM
 }
 
-model MapLocation {
-  id        Int      @id @default(autoincrement())
-  mapId     Int      @map("map_id")
+enum RackNumberStrategy {
+  TRAILING_NUMBER
+  FULL_NAME
+  REGEX
+}
+
+model DatacenterMap {
+  id              Int      @id @default(autoincrement()) @db.UnsignedInt
+  name            String   @unique @db.VarChar(150)
+  description     String?  @db.Text
+  width           Decimal  @default(1200) @db.Decimal(10, 2)
+  height          Decimal  @default(800) @db.Decimal(10, 2)
+  backgroundColor String?  @map("background_color") @db.VarChar(20)
+  gridEnabled     Boolean  @default(true) @map("grid_enabled")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  sourceLocations MapSourceLocation[]
+  columns         MapColumn[]
+  rows            MapRow[]
+  rackSlots       RackSlot[]
+  elements        MapElement[]
+  matchingRule    MapMatchingRule?
+
+  @@map("datacenter_maps")
+}
+
+model MapSourceLocation {
+  id                     Int      @id @default(autoincrement()) @db.UnsignedInt
+  mapId                  Int      @map("map_id") @db.UnsignedInt
+  externalLocationId     Int      @map("external_location_id") @db.UnsignedInt
+  externalLocationName   String   @map("external_location_name") @db.VarChar(150)
+  normalizedLocationName String   @map("normalized_location_name") @db.VarChar(150)
+  active                 Boolean  @default(true)
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  map DatacenterMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+
+  @@unique([mapId, externalLocationId])
+  @@index([externalLocationId])
+  @@map("map_source_locations")
+}
+
+model MapColumn {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  mapId     Int      @map("map_id") @db.UnsignedInt
   code      String   @db.VarChar(30)
   label     String?  @db.VarChar(100)
+  sortOrder Int      @map("sort_order")
+  width     Decimal  @default(64) @db.Decimal(10, 2)
+  visible   Boolean  @default(true)
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  map       Map           @relation(fields: [mapId], references: [id], onDelete: Cascade)
-  positions MapPosition[]
+  map       DatacenterMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  rackSlots RackSlot[]
 
   @@unique([mapId, code])
-  @@index([mapId])
-  @@map("rackmap_locations")
+  @@unique([mapId, sortOrder])
+  @@map("map_columns")
 }
 
-model MapPosition {
-  id           Int      @id @default(autoincrement())
-  mapId        Int      @map("map_id")
-  locationId   Int      @map("location_id")
-  rackNumber   String   @map("rack_number") @db.VarChar(30)
-  positionX    Int      @map("position_x")
-  positionY    Int      @map("position_y")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+model MapRow {
+  id        Int      @id @default(autoincrement()) @db.UnsignedInt
+  mapId     Int      @map("map_id") @db.UnsignedInt
+  code      String   @db.VarChar(30)
+  label     String?  @db.VarChar(100)
+  sortOrder Int      @map("sort_order")
+  height    Decimal  @default(32) @db.Decimal(10, 2)
+  visible   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  map      Map         @relation(fields: [mapId], references: [id], onDelete: Cascade)
-  location MapLocation @relation(fields: [locationId], references: [id], onDelete: Cascade)
-  cell     MapCell?
+  map       DatacenterMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  rackSlots RackSlot[]
 
-  @@unique([mapId, locationId, rackNumber])
-  @@unique([mapId, positionX, positionY])
-  @@index([mapId])
-  @@map("rackmap_positions")
+  @@unique([mapId, code])
+  @@unique([mapId, sortOrder])
+  @@map("map_rows")
 }
 
-model MapCell {
-  id               Int        @id @default(autoincrement())
-  mapId            Int        @map("map_id")
-  mapPositionId    Int?       @unique @map("map_position_id")
-  positionX        Int        @map("position_x")
-  positionY        Int        @map("position_y")
-  cellType         CellType   @map("cell_type")
-  source           CellSource
-  racktablesRackId Int?       @map("racktables_rack_id")
-  label            String?    @db.VarChar(100)
-  rotation         Int        @default(0)
-  createdAt        DateTime   @default(now()) @map("created_at")
-  updatedAt        DateTime   @updatedAt @map("updated_at")
+model RackSlot {
+  id                Int      @id @default(autoincrement()) @db.UnsignedInt
+  mapId             Int      @map("map_id") @db.UnsignedInt
+  externalRowId     Int?     @map("external_row_id") @db.UnsignedInt
+  externalRowName   String?  @map("external_row_name") @db.VarChar(100)
+  normalizedRowCode String   @map("normalized_row_code") @db.VarChar(50)
+  rackCode          String   @map("rack_code") @db.VarChar(50)
+  mapColumnId       Int?     @map("map_column_id") @db.UnsignedInt
+  mapRowId          Int?     @map("map_row_id") @db.UnsignedInt
+  positionX         Decimal  @map("position_x") @db.Decimal(10, 2)
+  positionY         Decimal  @map("position_y") @db.Decimal(10, 2)
+  width             Decimal  @default(64) @db.Decimal(10, 2)
+  height            Decimal  @default(160) @db.Decimal(10, 2)
+  rotation          Decimal  @default(0) @db.Decimal(8, 2)
+  zIndex            Int      @default(10) @map("z_index")
+  label             String?  @db.VarChar(100)
+  active            Boolean  @default(true)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  map         Map          @relation(fields: [mapId], references: [id], onDelete: Cascade)
-  mapPosition MapPosition? @relation(fields: [mapPositionId], references: [id], onDelete: Cascade)
+  map       DatacenterMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  mapColumn MapColumn?     @relation(fields: [mapColumnId], references: [id], onDelete: SetNull)
+  mapRow    MapRow?        @relation(fields: [mapRowId], references: [id], onDelete: SetNull)
 
-  @@unique([mapId, positionX, positionY])
-  @@unique([mapId, racktablesRackId])
-  @@index([mapId])
-  @@map("rackmap_cells")
+  @@unique([mapId, normalizedRowCode, rackCode])
+  @@index([externalRowId])
+  @@index([mapId, normalizedRowCode, rackCode, active])
+  @@map("rack_slots")
 }
 
-enum CellType {
-  RACK
-  WALL
-  DOOR
-  PDU
+model MapElement {
+  id          Int            @id @default(autoincrement()) @db.UnsignedInt
+  mapId       Int            @map("map_id") @db.UnsignedInt
+  type        MapElementType
+  label       String?        @db.VarChar(150)
+  customType  String?        @map("custom_type") @db.VarChar(100)
+  positionX   Decimal        @map("position_x") @db.Decimal(10, 2)
+  positionY   Decimal        @map("position_y") @db.Decimal(10, 2)
+  width       Decimal        @db.Decimal(10, 2)
+  height      Decimal        @db.Decimal(10, 2)
+  rotation    Decimal        @default(0) @db.Decimal(8, 2)
+  zIndex      Int            @default(1) @map("z_index")
+  groupKey    String?        @map("group_key") @db.VarChar(100)
+  fillColor   String?        @map("fill_color") @db.VarChar(20)
+  borderColor String?        @map("border_color") @db.VarChar(20)
+  textColor   String?        @map("text_color") @db.VarChar(20)
+  visible     Boolean        @default(true)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  map DatacenterMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+
+  @@index([mapId, type])
+  @@index([groupKey])
+  @@map("map_elements")
 }
 
-enum CellSource {
-  AUTOMATIC
-  MANUAL
+model MapMatchingRule {
+  id                      Int                @id @default(autoincrement()) @db.UnsignedInt
+  mapId                   Int                @unique @map("map_id") @db.UnsignedInt
+  rackNumberStrategy      RackNumberStrategy @default(TRAILING_NUMBER) @map("rack_number_strategy")
+  rackNamePattern         String?            @map("rack_name_pattern") @db.VarChar(255)
+  uppercaseRow            Boolean            @default(true) @map("uppercase_row")
+  trimValues              Boolean            @default(true) @map("trim_values")
+  removeSpacesFromRow     Boolean            @default(false) @map("remove_spaces_from_row")
+  rackCodePadding         Int?               @map("rack_code_padding") @db.UnsignedInt
+  createdAt               DateTime           @default(now()) @map("created_at")
+  updatedAt               DateTime           @updatedAt @map("updated_at")
+
+  map DatacenterMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+
+  @@map("map_matching_rules")
 }
