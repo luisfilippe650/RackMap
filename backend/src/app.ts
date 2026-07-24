@@ -1,4 +1,5 @@
 import fastify from 'fastify';
+import { AxesRoutes } from "./modules/axes/axes_router";
 import { MapRoutes } from "./modules/maps/maps_router";
 
 
@@ -13,6 +14,6 @@ app.get("/health", async() => ({ status: "ok" }));
 
 
 app.register(MapRoutes, {prefix: PREFIX});
-
+app.register(AxesRoutes, {prefix: PREFIX});
 
 
