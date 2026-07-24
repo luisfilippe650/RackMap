@@ -1,63 +1,88 @@
 # RackMap
 
-RackMap is a local web application for viewing rack and location data using a Node/Fastify backend, a React/Vite frontend, Prisma, and MariaDB.
+Uma aplicação web local para visualizar e gerenciar dados de racks e locais com atualizações dinâmicas. Desenvolvida como solução MVP para mapear infraestrutura de servidores e melhorar a colaboração do time.
 
-## Requirements
+> **⚠️ Status:** Este é um projeto em desenvolvimento ativo. Trata-se de um MVP (Minimum Viable Product) criado para validar a solução com o time. Espere encontrar melhorias necessárias em UX, performance e lógica de negócio.
 
-- Docker and Docker Compose
-- Node.js 22, only if you want to run services outside Docker
+## Stack Técnico
 
-## Quick Start With Docker
+- **Backend**: Node.js + Fastify + Prisma + MariaDB
+- **Frontend**: React + Vite
+- **Containerização**: Docker + Docker Compose
 
-From the project root, run:
+## Conhecidas Limitações 🚧
+
+### Frontend
+- Desenvolvido com auxílio de IA, pode conter bugs visuais e de interação
+- Tabelas renderizadas com CSS puro e loops `for` (implementação pode ser pesada)
+- Sem otimizações de performance para grandes volumes de dados
+- Recomendado para análise antes de deployar em produção
+
+### Backend
+- Lógica de negócio em refinamento
+- Alguns algoritmos precisam de revisão e otimização
+- Estrutura preparada para evoluir com melhorias do time
+
+## Pré-requisitos
+
+- Docker e Docker Compose
+- Node.js 22 (opcional, apenas para desenvolvimento local sem containers)
+
+## Quickstart com Docker
+
+Do diretório raiz do projeto:
 
 ```bash
 docker compose up
 ```
 
-To run in the background:
+Para rodar em background:
 
 ```bash
 docker compose up -d
 ```
 
-The Compose stack starts:
+A stack inicia os seguintes serviços:
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:3333
-- MariaDB: localhost:3306
+| Serviço | URL | Descrição |
+|---------|-----|-----------|
+| Frontend | http://localhost:5173 | Vite dev server |
+| Backend API | http://localhost:3333 | Fastify API |
+| MariaDB | localhost:3306 | Banco de dados |
 
-Check the backend health endpoint:
+### Health Check
+
+Verificar se o backend está pronto:
 
 ```bash
 curl http://localhost:3333/health
 ```
 
-Stop the stack:
+### Parar a Stack
 
 ```bash
 docker compose down
 ```
 
-Stop the stack and remove the database and dependency volumes:
+Para remover também volumes de dados e dependências:
 
 ```bash
 docker compose down -v
 ```
 
-## Docker Services
+## Arquitetura Docker
 
-The `docker-compose.yml` file defines:
+O arquivo `docker-compose.yml` orquestra:
 
-- `frontend`: runs the Vite development server on port `5173`
-- `backend`: runs the Fastify API on port `3333`
-- `mysql-db`: runs MariaDB 11.4 and loads `database/database.sql` on first initialization
+- **frontend**: Vite dev server na porta `5173`
+- **backend**: Fastify API na porta `3333`
+- **mysql-db**: MariaDB 11.4, inicializa com `database/database.sql`
 
-The backend waits for MariaDB to become healthy before starting. The frontend waits for the backend healthcheck before starting.
+O backend aguarda o MariaDB ficar saudável antes de iniciar. O frontend aguarda o healthcheck do backend antes de iniciar.
 
-## Environment Variables
+## Configuração de Ambiente
 
-The backend reads these variables:
+### Variáveis Backend
 
 ```env
 DATABASE_URL="mysql://rackmap:rackmap@127.0.0.1:3306/rackmap"
@@ -67,59 +92,86 @@ RACKTABLES_LOCATIONS_ROWS_PATH="/v1/racktables/locations/rows"
 # RACKTABLES_API_TOKEN=""
 ```
 
-For Docker, `DATABASE_URL` is set automatically to use the MariaDB service:
+**Com Docker**: `DATABASE_URL` é configurado automaticamente para usar o serviço MariaDB:
 
 ```env
 mysql://rackmap:rackmap@mysql-db:3306/rackmap
 ```
 
-The Compose default for `RACKTABLES_API_URL` is `http://host.docker.internal:8000`, so the backend container can reach a RackTables API running on your host machine.
+O padrão do Compose para `RACKTABLES_API_URL` é `http://host.docker.internal:8000`, permitindo que o backend acesse uma API RackTables rodando na sua máquina host.
 
-You can override RackTables values when starting Compose:
+### Sobrescrever Variáveis
 
 ```bash
 RACKTABLES_API_URL=http://host.docker.internal:8000 docker compose up
 ```
 
-## Local Development Without Docker
+## Desenvolvimento Local (Sem Docker)
 
-Install dependencies:
+### Instalação
 
 ```bash
 npm install
 ```
 
-Generate Prisma client:
+### Gerar Cliente Prisma
 
 ```bash
 npx prisma generate --schema backend/prisma/schema.prisma
 ```
 
-Start the backend:
+### Iniciar Serviços
+
+Terminal 1 - Backend:
 
 ```bash
 npm run dev
 ```
 
-Start the frontend in another terminal:
+Terminal 2 - Frontend:
 
 ```bash
 npm run dev:frontend
 ```
 
-The Vite dev server proxies `/v1` and `/health` to `http://localhost:3333` by default. To use another backend URL:
+O Vite proxia `/v1` e `/health` para `http://localhost:3333` por padrão.
+
+Para usar outro endpoint de backend:
 
 ```bash
 BACKEND_PROXY_TARGET=http://localhost:3333 npm run dev:frontend
 ```
 
-## Useful Commands
+## Comandos Úteis
 
 ```bash
+# Verificar configuração do Compose
 docker compose config
+
+# Listar serviços
 docker compose ps
+
+# Logs em tempo real
 docker compose logs -f backend
 docker compose logs -f frontend
 docker compose logs -f mysql-db
+
+# Build do frontend para produção
 npm run build:frontend
 ```
+
+## Próximas Etapas
+
+- [ ] Revisar e otimizar performance do frontend (tabelas virtualizadas, memoização)
+- [ ] Validar lógica de negócio do backend com o time
+- [ ] Implementar testes unitários e integração
+- [ ] Melhorar tratamento de erros e validações
+- [ ] Documentar fluxos de dados e APIs
+
+## Contribuindo
+
+Melhorias são bem-vindas! Estamos refinando este projeto para torná-lo uma solução robusta para o time.
+
+## Licença
+
+[Adicionar informação de licença se aplicável]
