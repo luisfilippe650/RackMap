@@ -1,4 +1,29 @@
 services:
+  frontend:
+    image: node:22
+    container_name: rackmap-frontend
+    working_dir: /app
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      BACKEND_PROXY_TARGET: http://backend:3333
+    ports:
+      - "5173:5173"
+    volumes:
+      - .:/app
+      - rackmap-node-modules:/app/node_modules
+    command: >
+      sh -c "npm install &&
+      npm run dev:frontend -- --host 0.0.0.0"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:5173').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   backend:
     image: node:22
     container_name: rackmap-backend
@@ -9,10 +34,13 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: mysql://rackmap:rackmap@mysql-db:3306/rackmap
-      RACKTABLES_API_URL: ${RACKTABLES_API_URL:-http://localhost:8080}
-      RACKTABLES_RACKS_PATH_TEMPLATE: ${RACKTABLES_RACKS_PATH_TEMPLATE:-/locations/{locationId}/racks}
+      RACKTABLES_API_URL: ${RACKTABLES_API_URL:-http://host.docker.internal:8000}
+      RACKTABLES_RACKS_PATH: ${RACKTABLES_RACKS_PATH:-/v1/racktables/racks/}
+      RACKTABLES_LOCATIONS_ROWS_PATH: ${RACKTABLES_LOCATIONS_ROWS_PATH:-/v1/racktables/locations/rows}
       RACKTABLES_API_TOKEN: ${RACKTABLES_API_TOKEN:-}
       PORT: 3333
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "3333:3333"
     volumes:
