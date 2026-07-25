@@ -1,4 +1,4 @@
-import { DoorOpen, Eraser, Grid2X2, MousePointer2, PanelTop, Server, SquareDashedMousePointer, TableCellsSplit } from 'lucide-react';
+import { Cable, DoorOpen, Eraser, Grid2X2, MousePointer2, PanelTop, Server, SquareDashedMousePointer, TableCellsSplit } from 'lucide-react';
 import { Button } from '../../../components/ui/button';
 import type { EditorTool } from '../map-editor.types';
 
@@ -10,6 +10,7 @@ const tools: Array<{ tool: EditorTool; label: string; icon: typeof MousePointer2
   { tool: 'DOOR', label: 'Porta', icon: DoorOpen },
   { tool: 'CORRIDOR', label: 'Corredor', icon: TableCellsSplit },
   { tool: 'COLUMN', label: 'Coluna', icon: SquareDashedMousePointer },
+  { tool: 'NETWORK_LINK', label: 'Rede', icon: Cable },
   { tool: 'ERASER', label: 'Apagar', icon: Eraser }
 ];
 

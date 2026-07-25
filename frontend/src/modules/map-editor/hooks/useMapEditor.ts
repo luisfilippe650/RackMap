@@ -21,7 +21,9 @@ export function createEmptyEditorState(name = 'Mapa', columnCount = 12, rowCount
     })),
     rackSlots: [],
     elements: [],
+    networkLinks: [],
     selectedElementIds: [],
+    selectedNetworkLinkId: null,
     activeTool: 'SELECT',
     isDirty: false
   };
@@ -40,7 +42,16 @@ function normalizeLoadedState(state: Awaited<ReturnType<typeof mapEditorApi.getE
       rackTablesRackName: slot.rackTablesRackName ?? null
     })),
     elements: state.elements.map((element) => ({ ...element, id: element.id ?? crypto.randomUUID() })),
+    networkLinks: (state.networkLinks ?? []).map((link) => ({
+      ...link,
+      id: link.id ?? crypto.randomUUID(),
+      name: link.name ?? 'Rede',
+      color: link.color ?? '#f59e0b',
+      cableType: link.cableType ?? null,
+      pathPoints: link.pathPoints ?? []
+    })),
     selectedElementIds: [],
+    selectedNetworkLinkId: null,
     activeTool: 'SELECT',
     isDirty: false
   };

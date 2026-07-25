@@ -4,6 +4,10 @@ import { MapElementType } from '../../generated/prisma/enums';
 const PositiveDimensionSchema = z.number().positive();
 const GridIndexSchema = z.number().int().min(0);
 const GridSpanSchema = z.number().int().positive();
+const NetworkLinkPointSchema = z.object({
+    x: z.number().finite().min(0),
+    y: z.number().finite().min(0),
+});
 
 export const MapEditorParamsSchema = z.object({
     mapId: z.coerce.number().int().positive(),
@@ -37,6 +41,7 @@ export const SaveMapEditorSchema = z.object({
         height: PositiveDimensionSchema,
     })).min(1),
     rackSlots: z.array(z.object({
+        id: z.string().trim().min(1).max(100).optional(),
         normalizedRowCode: z.string().trim().min(1).max(50).optional().nullable(),
         rackCode: z.string().trim().min(1).max(50).optional().nullable(),
         rackName: z.string().trim().min(1).max(100).optional().nullable(),
@@ -53,6 +58,15 @@ export const SaveMapEditorSchema = z.object({
         fillColor: z.string().trim().min(1).max(20).optional().nullable(),
         borderColor: z.string().trim().min(1).max(20).optional().nullable(),
         textColor: z.string().trim().min(1).max(20).optional().nullable(),
+    })).default([]),
+    networkLinks: z.array(z.object({
+        id: z.string().trim().min(1).max(100).optional(),
+        name: z.string().trim().min(1).max(150),
+        sourceRackSlotId: z.string().trim().min(1).max(100),
+        targetRackSlotId: z.string().trim().min(1).max(100),
+        color: z.string().trim().min(1).max(20).optional().default('#f59e0b'),
+        cableType: z.string().trim().min(1).max(100).optional().nullable(),
+        pathPoints: z.array(NetworkLinkPointSchema).max(50).default([]),
     })).default([]),
     elements: z.array(z.object({
         type: MapEditorElementTypeSchema,
@@ -98,6 +112,17 @@ export const SaveMapEditorSchema = z.object({
         return new Set(keyedSlots.map((slot) => `${slot.normalizedRowCode}::${slot.rackCode}`)).size === keyedSlots.length;
     },
     { message: 'Rack slot row/rack codes must be unique when provided' },
+).refine(
+    (data) => {
+        const rackIds = new Set(data.rackSlots.map((slot) => slot.id).filter(Boolean));
+
+        return data.networkLinks.every((link) => (
+            link.sourceRackSlotId !== link.targetRackSlotId
+            && rackIds.has(link.sourceRackSlotId)
+            && rackIds.has(link.targetRackSlotId)
+        ));
+    },
+    { message: 'Network links must connect two existing rack slots' },
 );
 
 export type SaveMapEditorDTO = z.infer<typeof SaveMapEditorSchema>;

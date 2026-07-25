@@ -1,4 +1,4 @@
-import { Edit3, Grid2X2, Minus, Plus, Printer, RefreshCcw, RotateCcw, Tags, X, Rows3 } from 'lucide-react';
+import { Cable, Edit3, Grid2X2, Minus, Plus, Printer, RefreshCcw, RotateCcw, Tags, X, Rows3 } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { LoadingState } from '../../components/feedback/loading-state';
@@ -36,6 +36,8 @@ export function MapViewPage() {
   const [showGrid, setShowGrid] = useState(true);
   const [showLabels, setShowLabels] = useState(true);
   const [showAxes, setShowAxes] = useState(false);
+  const [showNetworkOnly, setShowNetworkOnly] = useState(false);
+  const [selectedNetworkLinkId, setSelectedNetworkLinkId] = useState<string>('ALL');
   const [selectedRack, setSelectedRack] = useState<RenderedRack | null>(null);
   const [rackOccupancy, setRackOccupancy] = useState<RackTablesOccupancyResponse | null>(null);
   const [rackDetailsStatus, setRackDetailsStatus] = useState<string | null>(null);
@@ -126,6 +128,10 @@ export function MapViewPage() {
   ] as const : [];
   const summaryAttributes = selectedSummary?.attributes ? Object.entries(selectedSummary.attributes) : [];
   const selectedRackDisplayName = selectedRack?.label ?? selectedRack?.rackTablesRackName ?? selectedRack?.name;
+  const networkLinks = renderedMap.networkLinks ?? [];
+  const filteredNetworkLinks = selectedNetworkLinkId === 'ALL'
+    ? networkLinks
+    : networkLinks.filter((link) => String(link.id) === selectedNetworkLinkId);
 
   return (
     <section className="viewer-shell">
@@ -264,22 +270,85 @@ export function MapViewPage() {
               <Rows3 size={16} />
               Eixos
             </Button>
+            <Button variant={showNetworkOnly ? 'primary' : 'secondary'} onClick={() => setShowNetworkOnly((value) => !value)}>
+              <Cable size={16} />
+              Fiacao
+            </Button>
           </header>
-          <RenderedMapCanvas onRackClick={selectRack} renderedMap={renderedMap} showAxes={showAxes} showGrid={showGrid} showLabels={showLabels} zoom={zoom} />
+          <RenderedMapCanvas
+            networkLinks={filteredNetworkLinks}
+            onRackClick={selectRack}
+            renderedMap={renderedMap}
+            showAxes={showAxes}
+            showGrid={showGrid}
+            showLabels={showLabels}
+            showNetworkOnly={showNetworkOnly}
+            zoom={zoom}
+          />
         </div>
         <aside className="viewer-sidebar">
           <div>
             <h2>{renderedMap.map.name}</h2>
             {renderedMap.map.description ? <p className="map-description">{renderedMap.map.description}</p> : null}
           </div>
+          {showNetworkOnly ? (
+            <section className="network-filter-panel">
+              <div className="network-filter-heading">
+                <h3>Fiacao</h3>
+                <span>{filteredNetworkLinks.length}/{networkLinks.length}</span>
+              </div>
+              <label className="network-filter-select">
+                <span>Rede</span>
+                <select value={selectedNetworkLinkId} onChange={(event) => setSelectedNetworkLinkId(event.target.value)}>
+                  <option value="ALL">Todas as redes</option>
+                  {networkLinks.map((link) => (
+                    <option key={link.id} value={String(link.id)}>
+                      {link.name}{link.cableType ? ` - ${link.cableType}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="network-link-list" role="listbox" aria-label="Redes cadastradas">
+                <button className={selectedNetworkLinkId === 'ALL' ? 'selected' : ''} type="button" onClick={() => setSelectedNetworkLinkId('ALL')}>
+                  <strong>Todas as redes</strong>
+                  <span>{networkLinks.length} fios cadastrados</span>
+                </button>
+                {networkLinks.map((link) => (
+                  <button
+                    className={selectedNetworkLinkId === String(link.id) ? 'selected' : ''}
+                    key={link.id}
+                    type="button"
+                    onClick={() => setSelectedNetworkLinkId(String(link.id))}
+                  >
+                    <strong>{link.name}</strong>
+                    <span>{link.cableType ?? 'Sem tipo'} | {link.pathPoints.length} pontos</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
           <div className="metric-list">
             <span>Racks posicionados</span>
             <strong>{renderedMap.racks.length}</strong>
             <span>Vinculados</span>
             <strong>{renderedMap.racks.filter((rack) => rack.rackTablesRackId).length}</strong>
+            <span>Fios</span>
+            <strong>{networkLinks.length}</strong>
+            {showNetworkOnly ? (
+              <>
+                <span>Exibidos</span>
+                <strong>{filteredNetworkLinks.length}</strong>
+              </>
+            ) : null}
             <span>Conflitos</span>
             <strong>{renderedMap.conflicts.length}</strong>
           </div>
+          {showNetworkOnly && filteredNetworkLinks.length === 0 ? (
+            <section className="issue-list">
+              <h3>Fiacao</h3>
+              <p>Nenhuma rede encontrada para esse filtro.</p>
+            </section>
+          ) : null}
           {renderedMap.warnings && renderedMap.warnings.length > 0 ? (
             <section className="issue-list">
               <h3>Avisos</h3>

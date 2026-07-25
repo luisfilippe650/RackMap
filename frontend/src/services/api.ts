@@ -78,8 +78,26 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Request failed with status ${response.status}`);
+    const responseText = await response.text();
+    let errorPayload: { message?: string; error?: string; details?: Array<{ path?: string; message?: string }> } | null = null;
+
+    try {
+      errorPayload = JSON.parse(responseText) as { message?: string; error?: string; details?: Array<{ path?: string; message?: string }> };
+    } catch {
+      errorPayload = null;
+    }
+
+    if (errorPayload) {
+      const details = errorPayload.details
+        ?.map((detail) => [detail.path, detail.message].filter(Boolean).join(': '))
+        .filter(Boolean)
+        .join('; ');
+      const message = [errorPayload.message ?? errorPayload.error, details].filter(Boolean).join(' ');
+
+      throw new Error(message || `Falha na requisicao com status ${response.status}.`);
+    }
+
+    throw new Error(responseText || `Falha na requisicao com status ${response.status}.`);
   }
 
   if (response.status === 204) {

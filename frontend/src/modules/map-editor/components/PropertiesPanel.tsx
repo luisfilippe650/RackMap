@@ -1,10 +1,11 @@
-import { Trash2 } from 'lucide-react';
+import { Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Field, SelectInput, TextInput } from '../../../components/ui/field';
-import type { EditorElementType, MapEditorItem, MapEditorState } from '../map-editor.types';
+import type { EditorElementType, MapEditorItem, MapEditorState, NetworkLinkDraft } from '../map-editor.types';
 import { rackTablesApi, type RackTablesRackOption } from '../services/racktables.api';
 import { findCollision } from '../utils/collision-detection';
+import { itemGeometry } from '../utils/element-geometry';
 
 const fixedTypes: EditorElementType[] = ['PDU', 'WALL', 'DOOR', 'CORRIDOR', 'COLUMN'];
 
@@ -43,15 +44,32 @@ function allItems(state: MapEditorState) {
   return [...state.rackSlots, ...state.elements];
 }
 
+function itemCenter(item: MapEditorItem, state: MapEditorState) {
+  const geometry = itemGeometry(item, state.columns, state.rows);
+
+  return {
+    x: geometry.left + geometry.width / 2,
+    y: geometry.top + geometry.height / 2
+  };
+}
+
+function distance(left: { x: number; y: number }, right: { x: number; y: number }) {
+  return Math.hypot(right.x - left.x, right.y - left.y);
+}
+
 export function PropertiesPanel({
   state,
   selectedItem,
+  selectedNetworkLink,
   onChangeItem,
+  onChangeNetworkLink,
   onDeleteSelected
 }: {
   state: MapEditorState;
   selectedItem: MapEditorItem | null;
+  selectedNetworkLink: NetworkLinkDraft | null;
   onChangeItem: (item: MapEditorItem) => void;
+  onChangeNetworkLink: (link: NetworkLinkDraft) => void;
   onDeleteSelected: () => void;
 }) {
   const [rackSearch, setRackSearch] = useState('');
@@ -177,6 +195,97 @@ export function PropertiesPanel({
     onChangeItem(candidate);
   }
 
+  if (!selectedItem && selectedNetworkLink) {
+    const sourceRack = state.rackSlots.find((slot) => slot.id === selectedNetworkLink.sourceRackSlotId);
+    const targetRack = state.rackSlots.find((slot) => slot.id === selectedNetworkLink.targetRackSlotId);
+    const sourceName = sourceRack?.rackName ?? sourceRack?.rackTablesRackName ?? sourceRack?.label ?? 'Rack origem';
+    const targetName = targetRack?.rackName ?? targetRack?.rackTablesRackName ?? targetRack?.label ?? 'Rack destino';
+
+    function addPathPoint() {
+      if (!sourceRack || !targetRack) {
+        return;
+      }
+
+      const points = [itemCenter(sourceRack, state), ...selectedNetworkLink.pathPoints, itemCenter(targetRack, state)];
+      let segmentIndex = 0;
+      let longestDistance = 0;
+
+      for (let index = 0; index < points.length - 1; index += 1) {
+        const segmentDistance = distance(points[index], points[index + 1]);
+
+        if (segmentDistance > longestDistance) {
+          longestDistance = segmentDistance;
+          segmentIndex = index;
+        }
+      }
+
+      const start = points[segmentIndex];
+      const end = points[segmentIndex + 1];
+      const newPoint = {
+        x: Math.round((start.x + end.x) / 2),
+        y: Math.round((start.y + end.y) / 2)
+      };
+      const nextPathPoints = [...selectedNetworkLink.pathPoints];
+
+      nextPathPoints.splice(segmentIndex, 0, newPoint);
+      onChangeNetworkLink({ ...selectedNetworkLink, pathPoints: nextPathPoints });
+    }
+
+    return (
+      <aside className="map-editor-properties">
+        <h2>Rede</h2>
+        <div className="form-grid single">
+          <Field label="Nome do fio">
+            <TextInput value={selectedNetworkLink.name} onChange={(event) => onChangeNetworkLink({ ...selectedNetworkLink, name: event.target.value })} />
+          </Field>
+          <Field label="Tipo">
+            <TextInput value={selectedNetworkLink.cableType ?? ''} placeholder="fibra, cobre, uplink..." onChange={(event) => onChangeNetworkLink({ ...selectedNetworkLink, cableType: event.target.value || null })} />
+          </Field>
+          <Field label="Cor">
+            <TextInput type="color" value={selectedNetworkLink.color} onChange={(event) => onChangeNetworkLink({ ...selectedNetworkLink, color: event.target.value })} />
+          </Field>
+
+          <div className="properties-box compact">
+            <dl>
+              <dt>Origem</dt>
+              <dd>{sourceName}</dd>
+              <dt>Destino</dt>
+              <dd>{targetName}</dd>
+              <dt>Pontos</dt>
+              <dd>{selectedNetworkLink.pathPoints.length}</dd>
+            </dl>
+          </div>
+
+          <div className="network-path-actions">
+            <Button onClick={addPathPoint}>
+              <Plus size={16} />
+              Adicionar ponto
+            </Button>
+            <Button
+              disabled={selectedNetworkLink.pathPoints.length === 0}
+              onClick={() => onChangeNetworkLink({ ...selectedNetworkLink, pathPoints: selectedNetworkLink.pathPoints.slice(0, -1) })}
+            >
+              <Trash2 size={16} />
+              Remover ponto
+            </Button>
+            <Button
+              disabled={selectedNetworkLink.pathPoints.length === 0}
+              onClick={() => onChangeNetworkLink({ ...selectedNetworkLink, pathPoints: [] })}
+            >
+              <RotateCcw size={16} />
+              Direto
+            </Button>
+          </div>
+
+          <Button variant="danger" onClick={onDeleteSelected}>
+            <Trash2 size={16} />
+            Excluir fio
+          </Button>
+        </div>
+      </aside>
+    );
+  }
+
   if (!selectedItem) {
     return (
       <aside className="map-editor-properties">
@@ -189,6 +298,8 @@ export function PropertiesPanel({
           <strong>{state.rows.length}</strong>
           <span>Itens</span>
           <strong>{state.rackSlots.length + state.elements.length}</strong>
+          <span>Fios</span>
+          <strong>{state.networkLinks.length}</strong>
         </div>
       </aside>
     );

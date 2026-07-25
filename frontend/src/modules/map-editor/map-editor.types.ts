@@ -1,6 +1,6 @@
-export type EditorTool = 'SELECT' | 'RACK_SLOT' | 'PDU' | 'WALL' | 'DOOR' | 'CORRIDOR' | 'COLUMN' | 'ERASER';
+export type EditorTool = 'SELECT' | 'RACK_SLOT' | 'PDU' | 'WALL' | 'DOOR' | 'CORRIDOR' | 'COLUMN' | 'NETWORK_LINK' | 'ERASER';
 
-export type EditorElementType = Exclude<EditorTool, 'SELECT' | 'ERASER'>;
+export type EditorElementType = Exclude<EditorTool, 'SELECT' | 'NETWORK_LINK' | 'ERASER'>;
 
 export type EditorColumn = {
   id: string;
@@ -49,6 +49,21 @@ export type MapElementDraft = GridItemBase & {
 
 export type MapEditorItem = RackSlotDraft | MapElementDraft;
 
+export type NetworkLinkPoint = {
+  x: number;
+  y: number;
+};
+
+export type NetworkLinkDraft = {
+  id: string;
+  name: string;
+  sourceRackSlotId: string;
+  targetRackSlotId: string;
+  color: string;
+  cableType?: string | null;
+  pathPoints: NetworkLinkPoint[];
+};
+
 export type MapEditorState = {
   map: {
     id?: number;
@@ -61,7 +76,9 @@ export type MapEditorState = {
   rows: EditorRow[];
   rackSlots: RackSlotDraft[];
   elements: MapElementDraft[];
+  networkLinks: NetworkLinkDraft[];
   selectedElementIds: string[];
+  selectedNetworkLinkId: string | null;
   activeTool: EditorTool;
   isDirty: boolean;
 };

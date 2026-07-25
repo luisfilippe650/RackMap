@@ -222,6 +222,59 @@ CREATE TABLE IF NOT EXISTS rack_slots (
 );
 
 -- =========================================================
+-- LINKS DE REDE ENTRE RACKS
+-- =========================================================
+
+CREATE TABLE IF NOT EXISTS rack_network_links (
+    id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    map_id INT UNSIGNED NOT NULL,
+
+    source_rack_slot_id INT UNSIGNED NOT NULL,
+    target_rack_slot_id INT UNSIGNED NOT NULL,
+
+    name VARCHAR(150) NOT NULL,
+    color VARCHAR(20) NULL,
+    cable_type VARCHAR(100) NULL,
+    path_json JSON NULL,
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (id),
+
+    KEY idx_rack_network_link_map (
+        map_id
+    ),
+
+    KEY idx_rack_network_link_source (
+        source_rack_slot_id
+    ),
+
+    KEY idx_rack_network_link_target (
+        target_rack_slot_id
+    ),
+
+    CONSTRAINT fk_rack_network_link_map
+        FOREIGN KEY (map_id)
+        REFERENCES datacenter_maps(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_rack_network_link_source
+        FOREIGN KEY (source_rack_slot_id)
+        REFERENCES rack_slots(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_rack_network_link_target
+        FOREIGN KEY (target_rack_slot_id)
+        REFERENCES rack_slots(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+-- =========================================================
 -- ELEMENTOS FIXOS
 -- =========================================================
 

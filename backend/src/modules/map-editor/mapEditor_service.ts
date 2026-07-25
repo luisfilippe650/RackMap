@@ -1,7 +1,43 @@
 import { prisma } from '../../core/prisma';
+import { ensureRackNetworkLinksTable } from '../../core/databaseSchema';
 import { SaveMapEditorDTO } from './mapEditor_dto';
 
 export class MapEditorNotFoundError extends Error {}
+
+type RackNetworkLinkRow = {
+    id: number;
+    name: string;
+    source_rack_slot_id: number;
+    target_rack_slot_id: number;
+    color: string | null;
+    cable_type: string | null;
+    path_json: unknown;
+};
+
+function normalizePathPoints(value: unknown) {
+    let decoded = value;
+
+    if (typeof value === 'string') {
+        try {
+            decoded = JSON.parse(value) as unknown;
+        } catch {
+            decoded = [];
+        }
+    }
+
+    if (!Array.isArray(decoded)) {
+        return [];
+    }
+
+    return decoded
+        .filter((point): point is { x: number; y: number } => (
+            typeof point === 'object'
+            && point !== null
+            && typeof (point as { x?: unknown }).x === 'number'
+            && typeof (point as { y?: unknown }).y === 'number'
+        ))
+        .map((point) => ({ x: point.x, y: point.y }));
+}
 
 function sortedByOrder<T extends { order: number }>(items: T[]) {
     return [...items].sort((left, right) => left.order - right.order);
@@ -55,7 +91,10 @@ function gridGeometry(
 }
 
 export async function getMapEditorService(mapId: number) {
-    const map = await prisma.datacenterMap.findUnique({
+    await ensureRackNetworkLinksTable();
+
+    const [map, networkLinks] = await Promise.all([
+        prisma.datacenterMap.findUnique({
         where: { id: mapId },
         include: {
             columns: { orderBy: { sortOrder: 'asc' } },
@@ -63,7 +102,14 @@ export async function getMapEditorService(mapId: number) {
             rackSlots: { orderBy: [{ zIndex: 'asc' }, { id: 'asc' }] },
             elements: { orderBy: [{ zIndex: 'asc' }, { id: 'asc' }] },
         },
-    });
+    }),
+        prisma.$queryRaw<RackNetworkLinkRow[]>`
+            SELECT id, name, source_rack_slot_id, target_rack_slot_id, color, cable_type, path_json
+            FROM rack_network_links
+            WHERE map_id = ${mapId}
+            ORDER BY id ASC
+        `,
+    ]);
 
     if (!map) {
         throw new MapEditorNotFoundError('Map not found');
@@ -138,10 +184,22 @@ export async function getMapEditorService(mapId: number) {
                 textColor: element.textColor,
             };
         }),
+        networkLinks: networkLinks.map((link) => ({
+            id: `network-link-${Number(link.id)}`,
+            persistedId: Number(link.id),
+            name: link.name,
+            sourceRackSlotId: `rack-slot-${Number(link.source_rack_slot_id)}`,
+            targetRackSlotId: `rack-slot-${Number(link.target_rack_slot_id)}`,
+            color: link.color ?? '#f59e0b',
+            cableType: link.cable_type,
+            pathPoints: normalizePathPoints(link.path_json),
+        })),
     };
 }
 
 export async function saveMapEditorService(mapId: number, input: SaveMapEditorDTO) {
+    await ensureRackNetworkLinksTable();
+
     const columns = sortedByOrder(input.columns);
     const rows = sortedByOrder(input.rows);
     const width = columns.reduce((total, column) => total + column.width, 0);
@@ -149,6 +207,7 @@ export async function saveMapEditorService(mapId: number, input: SaveMapEditorDT
 
     await prisma.$transaction(async (tx) => {
         await tx.datacenterMap.findUniqueOrThrow({ where: { id: mapId } });
+        await tx.$executeRaw`DELETE FROM rack_network_links WHERE map_id = ${mapId}`;
         await tx.rackSlot.deleteMany({ where: { mapId } });
         await tx.mapElement.deleteMany({ where: { mapId } });
         await tx.mapColumn.deleteMany({ where: { mapId } });
@@ -194,10 +253,12 @@ export async function saveMapEditorService(mapId: number, input: SaveMapEditorDT
             }));
         }
 
+        const rackSlotIdsByDraftId = new Map<string, number>();
+
         for (const slot of input.rackSlots) {
             const geometry = gridGeometry(slot, columns, rows);
 
-            await tx.rackSlot.create({
+            const createdSlot = await tx.rackSlot.create({
                 data: {
                     mapId,
                     normalizedRowCode: slot.normalizedRowCode,
@@ -214,13 +275,17 @@ export async function saveMapEditorService(mapId: number, input: SaveMapEditorDT
                     rackName: slot.rackName,
                     rackTablesRackId: slot.rackTablesRackId,
                     rackTablesRackName: slot.rackTablesRackName,
-                    rackTablesRackData: slot.rackTablesRackData,
+                    rackTablesRackData: slot.rackTablesRackData as never,
                     fillColor: slot.fillColor,
                     borderColor: slot.borderColor,
                     textColor: slot.textColor,
                     active: true,
                 },
             });
+
+            if (slot.id) {
+                rackSlotIdsByDraftId.set(slot.id, createdSlot.id);
+            }
         }
 
         for (const element of input.elements) {
@@ -240,6 +305,35 @@ export async function saveMapEditorService(mapId: number, input: SaveMapEditorDT
                     visible: true,
                 },
             });
+        }
+
+        for (const link of input.networkLinks) {
+            const sourceRackSlotId = rackSlotIdsByDraftId.get(link.sourceRackSlotId);
+            const targetRackSlotId = rackSlotIdsByDraftId.get(link.targetRackSlotId);
+
+            if (!sourceRackSlotId || !targetRackSlotId) {
+                continue;
+            }
+
+            await tx.$executeRaw`
+                INSERT INTO rack_network_links (
+                    map_id,
+                    source_rack_slot_id,
+                    target_rack_slot_id,
+                    name,
+                    color,
+                    cable_type,
+                    path_json
+                ) VALUES (
+                    ${mapId},
+                    ${sourceRackSlotId},
+                    ${targetRackSlotId},
+                    ${link.name},
+                    ${link.color},
+                    ${link.cableType ?? null},
+                    ${JSON.stringify(link.pathPoints)}
+                )
+            `;
         }
     });
 

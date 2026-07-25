@@ -5,9 +5,11 @@ import { RackElement } from './rack-element';
 
 type RenderedMapCanvasProps = {
   renderedMap: RenderedMapResponse;
+  networkLinks?: RenderedMapResponse['networkLinks'];
   showAxes: boolean;
   showGrid: boolean;
   showLabels: boolean;
+  showNetworkOnly?: boolean;
   zoom: number;
   onRackClick?: (rack: RenderedMapResponse['racks'][number]) => void;
 };
@@ -29,7 +31,29 @@ function gridBoundaries(sizes: number[], totalSize: number) {
   return [...boundaries, totalSize];
 }
 
-export function RenderedMapCanvas({ renderedMap, showAxes, showGrid, showLabels, zoom, onRackClick }: RenderedMapCanvasProps) {
+function rackCenter(rack: RenderedMapResponse['racks'][number]) {
+  return {
+    x: rack.geometry.x + rack.geometry.width / 2,
+    y: rack.geometry.y + rack.geometry.height / 2
+  };
+}
+
+function pointsAttribute(points: Array<{ x: number; y: number }>) {
+  return points.map((point) => `${point.x},${point.y}`).join(' ');
+}
+
+function labelPoint(points: Array<{ x: number; y: number }>) {
+  const index = Math.max(0, Math.floor((points.length - 1) / 2));
+  const current = points[index];
+  const next = points[index + 1] ?? current;
+
+  return {
+    x: (current.x + next.x) / 2,
+    y: (current.y + next.y) / 2
+  };
+}
+
+export function RenderedMapCanvas({ renderedMap, networkLinks: visibleNetworkLinks, showAxes, showGrid, showLabels, showNetworkOnly = false, zoom, onRackClick }: RenderedMapCanvasProps) {
   const mapWidth = Number(renderedMap.map.width);
   const mapHeight = Number(renderedMap.map.height);
   const safeMapWidth = Number.isFinite(mapWidth) ? mapWidth : 0;
@@ -52,6 +76,8 @@ export function RenderedMapCanvas({ renderedMap, showAxes, showGrid, showLabels,
     '--print-width': `${safeMapWidth * printScale}px`,
     '--print-height': `${safeMapHeight * printScale}px`
   } as CSSProperties;
+  const networkLinks = showNetworkOnly ? (visibleNetworkLinks ?? renderedMap.networkLinks ?? []) : [];
+  const rackById = new Map(renderedMap.racks.filter((rack) => rack.id !== undefined).map((rack) => [Number(rack.id), rack]));
 
   return (
     <div className="canvas-viewport viewer-canvas-viewport">
@@ -107,12 +133,37 @@ export function RenderedMapCanvas({ renderedMap, showAxes, showGrid, showLabels,
             </>
           ) : null}
 
+          {showNetworkOnly ? (
+            <svg className="rendered-network-link-layer" aria-label="Fiacao de rede">
+              {networkLinks.map((link) => {
+                const sourceRack = rackById.get(link.sourceRackSlotId);
+                const targetRack = rackById.get(link.targetRackSlotId);
+
+                if (!sourceRack || !targetRack) {
+                  return null;
+                }
+
+                const source = rackCenter(sourceRack);
+                const target = rackCenter(targetRack);
+                const points = [source, ...(link.pathPoints ?? []), target];
+                const label = labelPoint(points);
+
+                return (
+                  <g className="rendered-network-link" key={link.id}>
+                    <polyline points={pointsAttribute(points)} stroke={link.color ?? '#f59e0b'} />
+                    <text x={label.x} y={label.y - 8}>{link.name}</text>
+                  </g>
+                );
+              })}
+            </svg>
+          ) : null}
+
           {renderedMap.elements.map((element) => (
             <MapElementView key={element.id} element={element} />
           ))}
 
           {renderedMap.racks.map((rack) => (
-            <RackElement key={rack.externalRackId} onClick={onRackClick} rack={rack} />
+            <RackElement key={rack.id ?? rack.externalRackId} onClick={onRackClick} rack={rack} />
           ))}
         </div>
       </div>

@@ -9,12 +9,14 @@ import { RackSlotElement } from './RackSlotElement';
 import { RowHeaders } from './RowHeaders';
 import { SelectionOverlay } from './SelectionOverlay';
 import { itemGeometry } from '../utils/element-geometry';
+import { NetworkLinkLayer } from './NetworkLinkLayer';
 
 type DragState =
   | { kind: 'create'; start: GridCell; current: GridCell }
   | { kind: 'move'; itemId: string; start: GridCell; originals: Map<string, MapEditorItem>; previousState: MapEditorState }
   | { kind: 'resize'; itemId: string; start: GridCell; original: MapEditorItem; mode: 'east' | 'south' | 'corner'; previousState: MapEditorState }
-  | { kind: 'rotate'; itemId: string; centerX: number; centerY: number; startAngle: number; original: MapEditorItem; previousState: MapEditorState };
+  | { kind: 'rotate'; itemId: string; centerX: number; centerY: number; startAngle: number; original: MapEditorItem; previousState: MapEditorState }
+  | { kind: 'network-point'; linkId: string; pointIndex: number; previousState: MapEditorState };
 
 const defaultElementSpans: Partial<Record<EditorElementType, { columnSpan: number; rowSpan: number }>> = {
   WALL: { columnSpan: 3, rowSpan: 1 },
@@ -151,9 +153,10 @@ export function EditorCanvas({
 }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [pendingNetworkSourceId, setPendingNetworkSourceId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const createSelection = drag?.kind === 'create' ? selectionFromCells(drag.start, drag.current) : null;
-  const createPreviewSelection = createSelection && state.activeTool !== 'SELECT' && state.activeTool !== 'ERASER'
+  const createPreviewSelection = createSelection && state.activeTool !== 'SELECT' && state.activeTool !== 'NETWORK_LINK' && state.activeTool !== 'ERASER'
     ? withDefaultElementSpan(state.activeTool, createSelection, state.columns.length, state.rows.length)
     : createSelection;
   const items = useMemo(() => allItems(state), [state]);
@@ -166,7 +169,7 @@ export function EditorCanvas({
     return Boolean(findCollision(candidate, items));
   }, [createPreviewSelection, items, state.activeTool]);
 
-  function pointToCell(event: React.PointerEvent<HTMLDivElement>) {
+  function pointToCell(event: React.PointerEvent) {
     const rect = canvasRef.current?.getBoundingClientRect();
 
     if (!rect) {
@@ -176,7 +179,7 @@ export function EditorCanvas({
     return cellFromPoint((event.clientX - rect.left) / zoom, (event.clientY - rect.top) / zoom, state.columns, state.rows);
   }
 
-  function pointToCanvas(event: React.PointerEvent<HTMLDivElement>) {
+  function pointToCanvas(event: React.PointerEvent) {
     const rect = canvasRef.current?.getBoundingClientRect();
 
     if (!rect) {
@@ -189,10 +192,78 @@ export function EditorCanvas({
     };
   }
 
+  function clampCanvasPoint(point: { x: number; y: number }) {
+    return {
+      x: Math.min(Math.max(0, point.x), totalWidth(state.columns)),
+      y: Math.min(Math.max(0, point.y), totalHeight(state.rows))
+    };
+  }
+
   function selectedIdsForPointer(itemId: string, event: React.PointerEvent) {
     const selected = event.shiftKey ? Array.from(new Set([...state.selectedElementIds, itemId])) : [itemId];
 
     return selected;
+  }
+
+  function makeNetworkLinkName() {
+    return `Rede ${state.networkLinks.length + 1}`;
+  }
+
+  function selectNetworkLink(linkId: string) {
+    onDraft({ ...state, selectedElementIds: [], selectedNetworkLinkId: linkId });
+  }
+
+  function startNetworkPointDrag(linkId: string, pointIndex: number, event: React.PointerEvent<SVGCircleElement>) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    onDraft({ ...state, selectedElementIds: [], selectedNetworkLinkId: linkId });
+    setDrag({ kind: 'network-point', linkId, pointIndex, previousState: structuredClone(state) });
+  }
+
+  function connectRackSlot(targetRackSlotId: string) {
+    if (!pendingNetworkSourceId) {
+      setPendingNetworkSourceId(targetRackSlotId);
+      onDraft({ ...state, selectedElementIds: [targetRackSlotId], selectedNetworkLinkId: null });
+      setStatus('Selecione o rack de destino da rede.');
+      return;
+    }
+
+    if (pendingNetworkSourceId === targetRackSlotId) {
+      setStatus('Selecione outro rack para fechar a rede.');
+      return;
+    }
+
+    const existingLink = state.networkLinks.find((link) => (
+      (link.sourceRackSlotId === pendingNetworkSourceId && link.targetRackSlotId === targetRackSlotId)
+      || (link.sourceRackSlotId === targetRackSlotId && link.targetRackSlotId === pendingNetworkSourceId)
+    ));
+
+    if (existingLink) {
+      onDraft({ ...state, selectedElementIds: [], selectedNetworkLinkId: existingLink.id });
+      setPendingNetworkSourceId(null);
+      setStatus('Esses racks ja possuem uma rede cadastrada.');
+      return;
+    }
+
+    const defaultName = makeNetworkLinkName();
+    const name = window.prompt('Nome do fio/rede', defaultName)?.trim() || defaultName;
+    const link = {
+      id: crypto.randomUUID(),
+      name,
+      sourceRackSlotId: pendingNetworkSourceId,
+      targetRackSlotId,
+      color: '#f59e0b',
+      cableType: null,
+      pathPoints: []
+    };
+
+    onCommit({
+      ...state,
+      networkLinks: [...state.networkLinks, link],
+      selectedElementIds: [],
+      selectedNetworkLinkId: link.id
+    });
+    setPendingNetworkSourceId(null);
+    setStatus(`Rede "${name}" criada.`);
   }
 
   function handlePointerDown(event: React.PointerEvent<HTMLDivElement>) {
@@ -220,8 +291,18 @@ export function EditorCanvas({
         return;
       }
 
+      if (state.activeTool === 'NETWORK_LINK') {
+        if (item.type !== 'RACK_SLOT') {
+          setStatus('A rede precisa iniciar e terminar em racks.');
+          return;
+        }
+
+        connectRackSlot(item.id);
+        return;
+      }
+
       const nextSelectedIds = selectedIdsForPointer(itemId, event);
-      onDraft({ ...state, selectedElementIds: nextSelectedIds });
+      onDraft({ ...state, selectedElementIds: nextSelectedIds, selectedNetworkLinkId: null });
 
       if (rotateHandle) {
         const pointer = pointToCanvas(event);
@@ -253,7 +334,13 @@ export function EditorCanvas({
     }
 
     if (state.activeTool === 'SELECT') {
-      onDraft({ ...state, selectedElementIds: [] });
+      onDraft({ ...state, selectedElementIds: [], selectedNetworkLinkId: null });
+      return;
+    }
+
+    if (state.activeTool === 'NETWORK_LINK') {
+      setPendingNetworkSourceId(null);
+      setStatus('Clique em um rack para iniciar a rede.');
       return;
     }
 
@@ -271,6 +358,21 @@ export function EditorCanvas({
 
     if (drag.kind === 'create') {
       setDrag({ ...drag, current: cell });
+      return;
+    }
+
+    if (drag.kind === 'network-point') {
+      const point = clampCanvasPoint(pointToCanvas(event));
+
+      onDraft({
+        ...state,
+        networkLinks: state.networkLinks.map((link) => link.id === drag.linkId
+          ? {
+            ...link,
+            pathPoints: link.pathPoints.map((currentPoint, pointIndex) => pointIndex === drag.pointIndex ? point : currentPoint)
+          }
+          : link)
+      });
       return;
     }
 
@@ -348,7 +450,7 @@ export function EditorCanvas({
         onCommit(replaceItems({ ...state, selectedElementIds: [item.id], activeTool: item.type === 'RACK_SLOT' ? 'SELECT' : state.activeTool }, nextItems));
         setStatus(item.type === 'RACK_SLOT' ? 'Informe o nome do rack e, se desejar, vincule ao RackTables no painel.' : null);
       }
-    } else if (drag.kind === 'rotate') {
+    } else if (drag.kind === 'rotate' || drag.kind === 'network-point') {
       onCommit(state, drag.previousState);
       setStatus(null);
     } else {
@@ -407,6 +509,15 @@ export function EditorCanvas({
             style={{ width: totalWidth(state.columns), height: totalHeight(state.rows) }}
           >
             <GridLayer columns={state.columns} rows={state.rows} />
+            <NetworkLinkLayer
+              columns={state.columns}
+              links={state.networkLinks}
+              onSelectLink={selectNetworkLink}
+              onStartPointDrag={startNetworkPointDrag}
+              rackSlots={state.rackSlots}
+              rows={state.rows}
+              selectedLinkId={state.selectedNetworkLinkId}
+            />
             {state.elements.map((element) => (
               <FixedMapElement columns={state.columns} element={element} key={element.id} rows={state.rows} selected={state.selectedElementIds.includes(element.id)} />
             ))}

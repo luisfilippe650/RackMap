@@ -47,6 +47,7 @@ model DatacenterMap {
   rows            MapRow[]
   rackSlots       RackSlot[]
   elements        MapElement[]
+  networkLinks    RackNetworkLink[]
   matchingRule    MapMatchingRule?
 
   @@map("datacenter_maps")
@@ -137,11 +138,35 @@ model RackSlot {
   map       DatacenterMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
   mapColumn MapColumn?    @relation(fields: [mapColumnId], references: [id], onDelete: SetNull)
   mapRow    MapRow?       @relation(fields: [mapRowId], references: [id], onDelete: SetNull)
+  sourceNetworkLinks RackNetworkLink[] @relation("SourceRackNetworkLinks")
+  targetNetworkLinks RackNetworkLink[] @relation("TargetRackNetworkLinks")
 
   @@unique([mapId, normalizedRowCode, rackCode])
   @@index([externalRowId])
   @@index([mapId, normalizedRowCode, rackCode, active])
   @@map("rack_slots")
+}
+
+model RackNetworkLink {
+  id               Int      @id @default(autoincrement()) @db.UnsignedInt
+  mapId            Int      @map("map_id") @db.UnsignedInt
+  sourceRackSlotId Int      @map("source_rack_slot_id") @db.UnsignedInt
+  targetRackSlotId Int      @map("target_rack_slot_id") @db.UnsignedInt
+  name             String   @db.VarChar(150)
+  color            String?  @db.VarChar(20)
+  cableType        String?  @map("cable_type") @db.VarChar(100)
+  pathJson         Json?    @map("path_json")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  map              DatacenterMap @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  sourceRackSlot   RackSlot      @relation("SourceRackNetworkLinks", fields: [sourceRackSlotId], references: [id], onDelete: Cascade)
+  targetRackSlot   RackSlot      @relation("TargetRackNetworkLinks", fields: [targetRackSlotId], references: [id], onDelete: Cascade)
+
+  @@index([mapId])
+  @@index([sourceRackSlotId])
+  @@index([targetRackSlotId])
+  @@map("rack_network_links")
 }
 
 model MapElement {

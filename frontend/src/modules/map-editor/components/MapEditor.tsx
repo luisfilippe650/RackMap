@@ -5,7 +5,7 @@ import { Button } from '../../../components/ui/button';
 import { useEditorHistory } from '../hooks/useEditorHistory';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useSaveMapEditor, useSelectedItems } from '../hooks/useMapEditor';
-import type { EditorColumn, EditorRow, MapEditorItem, MapEditorState } from '../map-editor.types';
+import type { EditorColumn, EditorRow, MapEditorItem, MapEditorState, NetworkLinkDraft } from '../map-editor.types';
 import { findCollision, getCollisionMessage } from '../utils/collision-detection';
 import { defaultColumnCode, defaultRowCode } from '../utils/axis-labels';
 import { clampGridItem } from '../utils/grid-coordinates';
@@ -59,16 +59,18 @@ export function MapEditor({ initialState, mapId }: { initialState: MapEditorStat
   const [status, setStatus] = useState<string | null>(null);
   const selectedItems = useSelectedItems(history.state);
   const selectedItem = selectedItems[0] ?? null;
+  const selectedNetworkLink = history.state.networkLinks.find((link) => link.id === history.state.selectedNetworkLinkId) ?? null;
 
   const draft = (nextState: MapEditorState) => history.setState({ ...nextState, isDirty: true });
   const commit = (nextState: MapEditorState, previousState?: MapEditorState) => history.commit({ ...nextState, isDirty: true }, previousState);
 
   function deleteSelected() {
-    if (history.state.selectedElementIds.length === 0) {
+    if (history.state.selectedElementIds.length === 0 && !history.state.selectedNetworkLinkId) {
       return;
     }
 
     const selected = new Set(history.state.selectedElementIds);
+    const selectedNetworkLinkId = history.state.selectedNetworkLinkId;
     const importantDelete = history.state.selectedElementIds.length > 1 || history.state.rackSlots.some((slot) => selected.has(slot.id));
 
     if (importantDelete && !window.confirm('Excluir os elementos selecionados?')) {
@@ -79,7 +81,13 @@ export function MapEditor({ initialState, mapId }: { initialState: MapEditorStat
       ...history.state,
       rackSlots: history.state.rackSlots.filter((slot) => !selected.has(slot.id)),
       elements: history.state.elements.filter((element) => !selected.has(element.id)),
-      selectedElementIds: []
+      networkLinks: history.state.networkLinks.filter((link) => (
+        link.id !== selectedNetworkLinkId
+        && !selected.has(link.sourceRackSlotId)
+        && !selected.has(link.targetRackSlotId)
+      )),
+      selectedElementIds: [],
+      selectedNetworkLinkId: null
     });
   }
 
@@ -141,6 +149,13 @@ export function MapEditor({ initialState, mapId }: { initialState: MapEditorStat
     draft(updateItems(history.state, (current) => current.id === item.id ? item : current));
   }
 
+  function changeSelectedNetworkLink(link: NetworkLinkDraft) {
+    draft({
+      ...history.state,
+      networkLinks: history.state.networkLinks.map((current) => current.id === link.id ? link : current)
+    });
+  }
+
   async function save() {
     setStatus(null);
 
@@ -149,6 +164,14 @@ export function MapEditor({ initialState, mapId }: { initialState: MapEditorStat
     if (incompleteSlot) {
       setStatus('Rack precisa de um nome antes de salvar.');
       history.setState({ ...history.state, selectedElementIds: [incompleteSlot.id] });
+      return;
+    }
+
+    const incompleteNetworkLink = history.state.networkLinks.find((link) => !link.name.trim());
+
+    if (incompleteNetworkLink) {
+      setStatus('Fio de rede precisa de um nome antes de salvar.');
+      history.setState({ ...history.state, selectedElementIds: [], selectedNetworkLinkId: incompleteNetworkLink.id });
       return;
     }
 
@@ -213,7 +236,14 @@ export function MapEditor({ initialState, mapId }: { initialState: MapEditorStat
       <div className={`map-editor-status ${status ? 'has-message' : ''}`}>
         {status ?? (history.state.isDirty ? 'Alteracoes locais nao salvas.' : 'Sem alteracoes pendentes.')}
       </div>
-      <PropertiesPanel onChangeItem={changeSelectedItem} onDeleteSelected={deleteSelected} selectedItem={selectedItem} state={history.state} />
+      <PropertiesPanel
+        onChangeItem={changeSelectedItem}
+        onChangeNetworkLink={changeSelectedNetworkLink}
+        onDeleteSelected={deleteSelected}
+        selectedItem={selectedItem}
+        selectedNetworkLink={selectedNetworkLink}
+        state={history.state}
+      />
     </section>
   );
 }

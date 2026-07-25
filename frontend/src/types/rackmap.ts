@@ -97,6 +97,7 @@ export type Geometry = {
 };
 
 export type RenderedRack = {
+  id?: number;
   externalRackId: number | string;
   name: string;
   rackCode: string | null;
@@ -110,6 +111,16 @@ export type RenderedRack = {
   fillColor?: string | null;
   borderColor?: string | null;
   textColor?: string | null;
+};
+
+export type RenderedNetworkLink = {
+  id: number;
+  name: string;
+  sourceRackSlotId: number;
+  targetRackSlotId: number;
+  color: string | null;
+  cableType: string | null;
+  pathPoints: Array<{ x: number; y: number }>;
 };
 
 export type UnmappedRack = {
@@ -140,6 +151,7 @@ export type RenderedMapResponse = {
   map: DatacenterMap;
   racks: RenderedRack[];
   elements: MapElement[];
+  networkLinks: RenderedNetworkLink[];
   unmappedRacks: UnmappedRack[];
   conflicts: RenderConflict[];
   warnings?: RenderWarning[];
